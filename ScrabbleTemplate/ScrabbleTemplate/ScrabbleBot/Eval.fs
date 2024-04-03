@@ -1,11 +1,58 @@
-﻿// Insert your updated Eval.fs file here from Assignment 7. All modules must be internal.
-
-module internal Eval
+﻿module internal Eval
 
     open StateMonad
+    
 
-    let add a b = failwith "Not implemented"      
-    let div a b = failwith "Not implemented"      
+    (* Code for testing *)
+
+    let hello = ('H', 4) :: ('E', 1) :: ('L', 1) :: ('L', 1) :: ('O', 1) :: []  
+    let state = mkState [("x", 5); ("y", 42)] hello ["_pos_"; "_result_"]
+    let emptyState = mkState [] [] []
+    let add (a: SM<int>) (b: SM<int>) = 
+        a >>= fun a1 -> 
+        b >>= fun b1 -> 
+        ret (a1+b1)
+
+    let div (a: SM<int>) (b: SM<int>) = 
+        a >>= (fun a1 -> 
+        b >>= (fun b1 -> 
+        if b1 = 0 then fail DivisionByZero else ret(a1/b1)))    
+
+    let sub (a: SM<int>) (b: SM<int>) = 
+        a >>= (fun a1 ->
+        b >>= (fun b1 -> 
+        ret (a1-b1)))
+
+    let mul (a: SM<int>) (b: SM<int>) = 
+        a >>= (fun a1 ->
+        b >>= (fun b1 -> 
+        ret (a1*b1)))
+
+    let modulo (a: SM<int>) (b: SM<int>) = 
+        a >>= (fun a1 -> 
+        b >>= (fun b1 -> 
+        if b1 <> 0 then ret (a1 % b1) else fail DivisionByZero))
+
+    let aeq (a: SM<int>) (b:SM<int>)  =
+       a >>= fun x ->  
+       b >>= fun y -> 
+        ret (x = y)
+
+    let alt (a: SM<int>) (b:SM<int>)  =
+       a >>= fun x ->  
+       b >>= fun y -> 
+        ret (x < y)
+
+    let no (b:SM<bool>) = 
+     b >>= fun x -> 
+      ret( not x)
+      
+    let conj (a: SM<bool>) (b:SM<bool>)  =
+       a >>= fun x ->  
+       b >>= fun y -> 
+        ret (x&&y)
+
+
 
     type aExp =
         | N of int
@@ -37,7 +84,8 @@ module internal Eval
        | Conj of bExp * bExp  (* boolean conjunction *)
 
        | IsVowel of cExp      (* check for vowel *)
-       | IsConsonant of cExp  (* check for constant *)
+       | IsLetter of cExp     (* check for letter *)
+       | IsDigit of cExp      (* check for digit *)
 
     let (.+.) a b = Add (a, b)
     let (.-.) a b = Sub (a, b)
@@ -56,21 +104,51 @@ module internal Eval
     let (.<=.) a b = a .<. b .||. ~~(a .<>. b)
     let (.>=.) a b = ~~(a .<. b)                (* numeric greater than or equal to *)
     let (.>.) a b = ~~(a .=. b) .&&. (a .>=. b) (* numeric greater than *)    
+   
+    let rec arithEval (a:aExp) : SM<int> = 
+     match a with 
+        | N n -> ret(n)
+        | V v -> lookup v
+        | WL -> wordLength 
+        | PV pv -> arithEval pv >>= fun x -> pointValue x
+        | Add (a1, a2) -> add(arithEval a1) (arithEval a2)
+        | Sub (a1, a2) -> sub(arithEval a1) (arithEval a2)
+        | Mul (a1, a2) -> mul(arithEval a1) (arithEval a2)
+        | Div (a1, a2) -> div(arithEval a1) (arithEval a2)
+        | Mod (a1, a2) -> modulo(arithEval a1) (arithEval a2)
+        | CharToInt c -> charEval c >>= fun x -> ret(int x)                                           
+                                                
+    and charEval (c:cExp) : SM<char> = 
+        match c with
+        |C c -> ret c 
+        |CV cv -> arithEval cv >>= characterValue 
+        |ToUpper c -> charEval c >>= (fun vc -> ret (System.Char.ToUpper(vc)))  
+        |ToLower c -> charEval c >>= (fun vc -> ret (System.Char.ToLower(vc)))
+        |IntToChar c -> arithEval c >>= (fun vc -> ret (char vc))
 
-    let arithEval a : SM<int> = failwith "Not implemented"      
 
-    let charEval c : SM<char> = failwith "Not implemented"      
+    let rec boolEval (b:bExp) : SM<bool> =
+     match b with
+       | TT -> ret true 
+       | FF -> ret false                
+       | AEq (b1, b2) -> aeq(arithEval b1) (arithEval b2)
+       | ALt (b1, b2) -> alt(arithEval b1) (arithEval b2)
+       | Not not -> no(boolEval not)
+       | Conj (b1, b2) -> conj(boolEval b1) (boolEval b2)
+       | IsVowel v -> charEval v >>= fun x -> ret (System.Char.IsDigit x)
+       | IsLetter l -> charEval l  >>= fun x ->  ret (System.Char.ToLower(x) |> "aeiouyæøå".Contains)
+       | IsDigit d -> charEval d >>= fun x ->  ret (System.Char.IsLetter(x)) 
 
-    let boolEval b : SM<bool> = failwith "Not implemented"
 
+        
 
-    type stm =                (* statements *)
-    | Declare of string       (* variable declaration *)
-    | Ass of string * aExp    (* variable assignment *)
-    | Skip                    (* nop *)
-    | Seq of stm * stm        (* sequential composition *)
-    | ITE of bExp * stm * stm (* if-then-else statement *)
-    | While of bExp * stm     (* while statement *)
+    type stmnt =                  (* statements *)
+    | Declare of string           (* variable declaration *)
+    | Ass of string * aExp        (* variable assignment *)
+    | Skip                        (* nop *)
+    | Seq of stmnt * stmnt        (* sequential composition *)
+    | ITE of bExp * stmnt * stmnt (* if-then-else statement *)
+    | While of bExp * stmnt       (* while statement *)
 
     let rec stmntEval stmnt : SM<unit> = failwith "Not implemented"
 
@@ -92,24 +170,22 @@ module internal Eval
 
     let stmntEval2 stm = failwith "Not implemented"
 
-(* Part 4 *) 
+(* Part 4 (Optional) *) 
 
-    type word = (char * int) list
-    type squareFun = word -> int -> int -> Result<int, Error>
-
+(*
     let stmntToSquareFun stm = failwith "Not implemented"
-
-
-    type coord = int * int
-
-    type boardFun = coord -> Result<squareFun option, Error> 
 
     let stmntToBoardFun stm m = failwith "Not implemented"
 
+    type squareStmnt = Map<int, stmnt>
+    let stmntsToSquare stms = failwith "Not implemented"
+
     type board = {
         center        : coord
-        defaultSquare : squareFun
+        defaultSquare : square
         squares       : boardFun
     }
 
     let mkBoard c defaultSq boardStmnt ids = failwith "Not implemented"
+    
+    *)

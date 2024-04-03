@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Demo\\Downloads\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleBot\\ScrabbleBot.fsproj": {}
+    "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\Scrabbletemplate\\ScrabbleBot\\ScrabbleBot.fsproj": {}
   },
   "projects": {
-    "C:\\Users\\Demo\\Downloads\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleBot\\ScrabbleBot.fsproj": {
+    "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\Scrabbletemplate\\ScrabbleBot\\ScrabbleBot.fsproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Demo\\Downloads\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleBot\\ScrabbleBot.fsproj",
+        "projectUniqueName": "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\Scrabbletemplate\\ScrabbleBot\\ScrabbleBot.fsproj",
         "projectName": "ScrabbleBot",
-        "projectPath": "C:\\Users\\Demo\\Downloads\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleBot\\ScrabbleBot.fsproj",
+        "projectPath": "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\Scrabbletemplate\\ScrabbleBot\\ScrabbleBot.fsproj",
         "packagesPath": "C:\\Users\\Demo\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Demo\\Downloads\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleBot\\obj\\",
+        "outputPath": "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\Scrabbletemplate\\ScrabbleBot\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Demo\\AppData\\Roaming\\NuGet\\NuGet.Config"
