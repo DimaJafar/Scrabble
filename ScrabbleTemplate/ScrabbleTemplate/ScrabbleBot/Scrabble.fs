@@ -1,4 +1,4 @@
-﻿namespace YourClientName
+﻿namespace Cadaanka
 
 open ScrabbleUtil
 open ScrabbleUtil.ServerCommunication
