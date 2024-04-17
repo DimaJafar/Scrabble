@@ -1,26 +1,26 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleTemplate.fsproj": {}
+    "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleTemplate/ScrabbleTemplate.fsproj": {}
   },
   "projects": {
-    "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleBot\\ScrabbleBot.fsproj": {
+    "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/ScrabbleBot.fsproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleBot\\ScrabbleBot.fsproj",
+        "projectUniqueName": "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/ScrabbleBot.fsproj",
         "projectName": "ScrabbleBot",
-        "projectPath": "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleBot\\ScrabbleBot.fsproj",
-        "packagesPath": "C:\\Users\\Demo\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleBot\\obj\\",
+        "projectPath": "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/ScrabbleBot.fsproj",
+        "packagesPath": "/Users/christina/.nuget/packages/",
+        "outputPath": "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Demo\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "/Users/christina/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net7.0"
         ],
         "sources": {
-          "C:\\Program Files\\dotnet\\sdk\\8.0.201\\FSharp\\library-packs": {},
+          "/usr/local/share/dotnet/sdk/8.0.201/FSharp/library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -70,10 +70,6 @@
             {
               "name": "Microsoft.NETCore.App.Ref",
               "version": "[7.0.16, 7.0.16]"
-            },
-            {
-              "name": "Microsoft.WindowsDesktop.App.Ref",
-              "version": "[7.0.16, 7.0.16]"
             }
           ],
           "frameworkReferences": {
@@ -81,35 +77,35 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.201\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/8.0.201/RuntimeIdentifierGraph.json"
         }
       }
     },
-    "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleTemplate.fsproj": {
+    "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleTemplate/ScrabbleTemplate.fsproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleTemplate.fsproj",
+        "projectUniqueName": "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleTemplate/ScrabbleTemplate.fsproj",
         "projectName": "ScrabbleTemplate",
-        "projectPath": "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleTemplate.fsproj",
-        "packagesPath": "C:\\Users\\Demo\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleTemplate\\obj\\",
+        "projectPath": "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleTemplate/ScrabbleTemplate.fsproj",
+        "packagesPath": "/Users/christina/.nuget/packages/",
+        "outputPath": "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleTemplate/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Demo\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "/Users/christina/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net7.0"
         ],
         "sources": {
-          "C:\\Program Files\\dotnet\\sdk\\8.0.201\\FSharp\\library-packs": {},
+          "/usr/local/share/dotnet/sdk/8.0.201/FSharp/library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net7.0": {
             "targetAlias": "net7.0",
             "projectReferences": {
-              "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleBot\\ScrabbleBot.fsproj": {
-                "projectPath": "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\ScrabbleTemplate\\ScrabbleBot\\ScrabbleBot.fsproj"
+              "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/ScrabbleBot.fsproj": {
+                "projectPath": "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/ScrabbleBot.fsproj"
               }
             }
           }
@@ -158,15 +154,11 @@
               "version": "[7.0.16, 7.0.16]"
             },
             {
-              "name": "Microsoft.NETCore.App.Host.win-x64",
+              "name": "Microsoft.NETCore.App.Host.osx-x64",
               "version": "[7.0.16, 7.0.16]"
             },
             {
               "name": "Microsoft.NETCore.App.Ref",
-              "version": "[7.0.16, 7.0.16]"
-            },
-            {
-              "name": "Microsoft.WindowsDesktop.App.Ref",
               "version": "[7.0.16, 7.0.16]"
             }
           ],
@@ -175,7 +167,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.201\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/8.0.201/RuntimeIdentifierGraph.json"
         }
       }
     }

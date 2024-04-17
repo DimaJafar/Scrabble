@@ -5,6 +5,10 @@ open ScrabbleUtil.ServerCommunication
 
 open System.IO
 
+open MultiSet
+
+open StateMonad
+
 open ScrabbleUtil.DebugPrint
 
 // The RegEx module is only used to parse human input. It is not used for the final product.
@@ -49,7 +53,7 @@ module State =
     }
 
     let mkState b d pn h = {board = b; dict = d;  playerNumber = pn; hand = h }
-
+    
     let board st         = st.board
     let dict st          = st.dict
     let playerNumber st  = st.playerNumber
@@ -64,16 +68,63 @@ module Scrabble =
             Print.printHand pieces (State.hand st)
 
             // remove the force print when you move on from manual input (or when you have learnt the format)
-            forcePrint "Input move (format '(<x-coordinate> <y-coordinate> <piece id><character><point-value> )*', note the absence of space between the last inputs)\n\n"
+            //forcePrint "Input move (format '(<x-coordinate> <y-coordinate> <piece id><character><point-value> )*', note the absence of space between the last inputs)\n\n"
+            
+            // ______________START THE NEW METHOD______________
+            
+            
+            //Få fat i brikker med st.hand
+            //Multiset (ID, antal); (ID, antal); (ID, antal); (ID, antal); (ID, antal);  
+            let ourhand: MultiSet<uint32> = st.hand
+            printfn "%A" ourhand
+            
+            //Få ID af det første bogstav af vores brikker
+            let (FirstID:uint32) = firstKey ourhand
+            printfn "%A" FirstID
+
+
+            //Få char af første brik, DEN HER TILGNGS MÅDE SKAL ÆNDRES, måske find ud af hvordan vi bruger characterValue?
+            let tempIntToCharFun (n:int) :char = char (int 'A' + n - 1)
+            let charint = tempIntToCharFun (int FirstID)
+            printfn "%A" charint
+
+            //Pieces contains all possible tiles and their points
+            // uint32 = ID     'a = set [char, point]
+            let printthis = pieces
+            printfn "Print this here: %A" printthis
+            
+            //Get the key 
+
+            //Få point value af første brik
+            
+
+
+
+            // (coord * (uint32 * (char * int)))
             let input =  System.Console.ReadLine()
+
+            //Save some coordinate in a variable for easier writing later
+            let (FirstMoveCoord:ScrabbleUtil.coord) =  (0,0)
+
+            
+            //(<x-coordinate> <y-coordinate> <piece id><character><point-value> )
+           
             let move = RegEx.parseMove input
 
-            debugPrint (sprintf "Player %d -> Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
+            
+
+            // END THE METHOD
+
+            //Send "Move" variable to the stream 
             send cstream (SMPlay move)
 
-            let msg = recv cstream
+
+            //PRINTS
+            debugPrint (sprintf "Player %d -> Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
             debugPrint (sprintf "Player %d <- Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
 
+            //Receive the message 
+            let msg = recv cstream
             match msg with
             | RCM (CMPlaySuccess(ms, points, newPieces)) ->
                 (* Successful play by you. Update your state (remove old tiles, add the new ones, change turn, etc) *)

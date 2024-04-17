@@ -9,12 +9,17 @@
         R (s: Map<'a,uint32>) -> Map.isEmpty s 
 
     let size (R (s)) = 
-     match R(s) with 
-     |R(s) -> Map.values s |> Seq.sum
+        match R(s) with 
+        |R(s) -> Map.values s |> Seq.sum
 
     let contains (a: 'a) (R (s): MultiSet<'a>) = 
         match s with
         |s -> Map.containsKey a s
+
+
+    let firstKey (R (s): MultiSet<'a>) = 
+        match s with 
+        | s -> List.head (List.ofSeq s.Keys)
 
 
     let numItems (a: 'a) (R (s): MultiSet<'a>) =

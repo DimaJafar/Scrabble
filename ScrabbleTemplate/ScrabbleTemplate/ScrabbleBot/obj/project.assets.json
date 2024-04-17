@@ -154,25 +154,25 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Demo\\.nuget\\packages\\": {}
+    "/Users/christina/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\Scrabbletemplate\\ScrabbleBot\\ScrabbleBot.fsproj",
+      "projectUniqueName": "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/ScrabbleBot.fsproj",
       "projectName": "ScrabbleBot",
-      "projectPath": "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\Scrabbletemplate\\ScrabbleBot\\ScrabbleBot.fsproj",
-      "packagesPath": "C:\\Users\\Demo\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Demo\\Desktop\\Scrabble\\ScrabbleTemplate\\Scrabbletemplate\\ScrabbleBot\\obj\\",
+      "projectPath": "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/ScrabbleBot.fsproj",
+      "packagesPath": "/Users/christina/.nuget/packages/",
+      "outputPath": "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\Demo\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "/Users/christina/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net7.0"
       ],
       "sources": {
-        "C:\\Program Files\\dotnet\\sdk\\8.0.201\\FSharp\\library-packs": {},
+        "/usr/local/share/dotnet/sdk/8.0.201/FSharp/library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -222,10 +222,6 @@
           {
             "name": "Microsoft.NETCore.App.Ref",
             "version": "[7.0.16, 7.0.16]"
-          },
-          {
-            "name": "Microsoft.WindowsDesktop.App.Ref",
-            "version": "[7.0.16, 7.0.16]"
           }
         ],
         "frameworkReferences": {
@@ -233,7 +229,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.201\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/8.0.201/RuntimeIdentifierGraph.json"
       }
     }
   }

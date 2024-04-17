@@ -9,6 +9,8 @@
     
     val contains : 'a -> MultiSet<'a> -> bool
 
+    val firstKey : MultiSet<'a> -> 'a
+
     val numItems : 'a -> MultiSet<'a> -> uint32 
 
     val add : 'a -> uint32 -> MultiSet<'a> -> MultiSet<'a>

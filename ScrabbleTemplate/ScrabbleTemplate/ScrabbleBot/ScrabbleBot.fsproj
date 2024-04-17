@@ -29,4 +29,10 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="ScrabbleLib, Culture=neutral, PublicKeyToken=null">
+      <HintPath>..\dlls\ScrabbleLib.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>
