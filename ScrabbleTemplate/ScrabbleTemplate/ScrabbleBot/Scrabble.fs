@@ -66,6 +66,8 @@ module Scrabble =
 
     let playGame cstream pieces (st : State.state) =
 
+        let (coordChar: list<(coord * char)>) = []
+
         let rec aux (st : State.state) =
             Print.printHand pieces (State.hand st)
 
@@ -73,6 +75,69 @@ module Scrabble =
             //forcePrint "Input move (format '(<x-coordinate> <y-coordinate> <piece id><character><point-value> )*', note the absence of space between the last inputs)\n\n"
             
             // ______________START THE NEW METHOD______________
+
+
+            //Make a first move from hand starting on coords 0,0. 
+
+
+
+
+
+
+            //Put coords and char in our list
+
+
+
+
+            //Figuring out how step works
+            let (chars:list<char>) = 'A'::'A'::'H'::[]
+
+            let findword list count =
+                let rec wordfinder list index=
+                    match ScrabbleUtil.Dictionary.step chars[index] st.dict with
+                        | Some t when fst t = false -> wordfinder list index+1
+                        | Some t -> 
+                        | None -> 0
+                wordfinder list 0
+                
+
+
+            let result = findword chars 0
+                
+            printfn "Step result: %A"  result
+
+
+            //val step : char -> Dict -> (bool * Dict) option
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            //_____________RANDOM PRINT_________
             
             //Få fat i brikker med st.hand
             //Multiset (ID, antal); (ID, antal); (ID, antal); (ID, antal); (ID, antal);  
@@ -108,17 +173,6 @@ module Scrabble =
             //Board? Se hvad board indeholder og hvad det er?
             let readBoard = st.board
             debugPrint (sprintf "Board information: %A" readBoard )
-
-
-           
-
-        
-            //Board består af:
-            //  center = (0, 0)
-            //  defaultSquare = map [] //hva fuck er defaultSquare?
-            //  squares = <fun:mkBoard@125> //hva det her0
-
-            
 
 
             //Få point value af en brik, ved at tage den anden værdi i et set. 
