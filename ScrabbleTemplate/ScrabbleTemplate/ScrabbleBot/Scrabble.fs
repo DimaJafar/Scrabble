@@ -11,6 +11,8 @@ open StateMonad
 
 open ScrabbleUtil.DebugPrint
 
+open ScrabbleLib
+
 // The RegEx module is only used to parse human input. It is not used for the final product.
 
 module RegEx =
@@ -46,7 +48,7 @@ module State =
     // information, such as number of players, player turn, etc.
 
     type state = {
-        board         : Parser.board
+        board         : Parser.board//int * int -> bool
         dict          : ScrabbleUtil.Dictionary.Dict
         playerNumber  : uint32
         hand          : MultiSet.MultiSet<uint32>
@@ -72,31 +74,73 @@ module Scrabble =
             
             // ______________START THE NEW METHOD______________
             
-            
             //Få fat i brikker med st.hand
             //Multiset (ID, antal); (ID, antal); (ID, antal); (ID, antal); (ID, antal);  
             let ourhand: MultiSet<uint32> = st.hand
-            printfn "%A" ourhand
+            //printfn "Vores hand består af disse (ID, ANTAL) \n %A" ourhand
             
             //Få ID af det første bogstav af vores brikker
             let (FirstID:uint32) = firstKey ourhand
-            printfn "%A" FirstID
+            //printfn "ID af første brik i vores hand: %A" FirstID
 
+            let NumberOf = numItems FirstID ourhand
+            //printfn "Antallet af den første brik: %A" NumberOf
 
             //Få char af første brik, DEN HER TILGNGS MÅDE SKAL ÆNDRES, måske find ud af hvordan vi bruger characterValue?
             let tempIntToCharFun (n:int) :char = char (int 'A' + n - 1)
             let charint = tempIntToCharFun (int FirstID)
-            printfn "%A" charint
+            //printfn "Bogstav i første brik i vores hand: %A" charint
 
+          
             //Pieces contains all possible tiles and their points
             // uint32 = ID     'a = set [char, point]
             let printthis = pieces
-            printfn "Print this here: %A" printthis
+            //printfn "Print this here: %A" printthis
             
-            //Get the key 
+            //Få key til pieces. Keys er ID'erne
+            let piecesKeys = pieces.Keys 
+            //printfn "Keys af alle brikker %A" piecesKeys
 
-            //Få point value af første brik
+            //Alle values. Values i "pieces" er set. Et set er [('A',1)]
+            let piecesValues = pieces.Values |> List.ofSeq
+            //printfn "Values af alle brikker %A" piecesValues
+
+            //Board? Se hvad board indeholder og hvad det er?
+            let readBoard = st.board
+            debugPrint (sprintf "Board information: %A" readBoard )
+
+
+           
+
+        
+            //Board består af:
+            //  center = (0, 0)
+            //  defaultSquare = map [] //hva fuck er defaultSquare?
+            //  squares = <fun:mkBoard@125> //hva det her0
+
             
+
+
+            //Få point value af en brik, ved at tage den anden værdi i et set. 
+            let setValue s = 
+                match Set.toList s with
+                | [(_, point)] -> point
+
+            //En liste af alle values uden den første, fordi den første er Wild Card
+            let RemoveWildCard listOfValues = List.tail listOfValues
+            let valuesNoWildCard = RemoveWildCard piecesValues
+
+            //Point af en brik givet i settet.
+            let PointValues = valuesNoWildCard |> List.map setValue
+            //printfn "Point til hver brik i set: %A" PointValues
+
+            //Look at a starting position on the board and a direction you want to type in.
+            //Is there a tile on the board, add that tile and increase the coordinate to the next one and repeat.
+            //If there is no tile on the board pick a tile from your hand
+
+
+
+
 
 
 
@@ -166,6 +210,7 @@ module Scrabble =
         //let dict = dictf true // Uncomment if using a gaddag for your dictionary
         let dict = dictf false // Uncomment if using a trie for your dictionary
         let board = Parser.mkBoard boardP
+        //let board = ScrabbleLib.simpleBoardLangParser.parseSimpleBoardProg boardP
                   
         let handSet = List.fold (fun acc (x, k) -> MultiSet.add x k acc) MultiSet.empty hand
 
