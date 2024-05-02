@@ -77,12 +77,101 @@ module Scrabble =
             // ______________START THE NEW METHOD______________
 
 
-            //Make a first move from hand starting on coords 0,0. 
+            // Goal: Make a first move from hand starting on coords 0,0. 
+            // Steps
+                // - Converting the multiset to a list, in order to access the items easilier with an index. 
+            let ourHand: MultiSet<uint32> = st.hand
+            let listOfMultiset = MultiSet.toList1 ourHand
+            //printfn "Vores hand består af disse (ID, ANTAL) \n %A" listOfMultiset
+            //[(0u, 1u); (4u, 1u); (5u, 1u); (8u, 1u); (15u, 1u); (18u, 1u); (20u, 1u)]
 
 
+                // - Getting the corresponding letter (char) from the ID (uint32)
+
+                    //This one takes a tuple (ID, count) and converts the ID to a corresponding char, and returns a new tuple (char, count)
+            let tempIntToCharFun ( ID:uint32 , count:uint32 ) : (char * uint32) = ( char (int 'A' + (int ID) - 1) , count )
+                    
+                    //This one uses the function above on every element of the listOfMultiset, and returns a new list where ID's are now chars instead.
+            let listWithCharPointTuple = List.map tempIntToCharFun listOfMultiset
+            //printfn "Vores hand består af disse (CHAR, ANTAL) \n %A" listWithCharPointTuple
 
 
+                // - Check the counts for possible duplicate letters and seperate them to individual items
+                    // - ('A', 2) -> ('A', 1) ('A', 1)
+            let expandWithDuplicate ( letter:char , count: uint32 ) =
+                match count with
+                | count when count = 1u -> [( letter , count )] //Do nothing to the tuple if there is no duplicate
+                | count                  -> List.replicate (int count) (letter , 1u)
+                //Replicate the tuple "count" times, where the count of a letter is now 1 
 
+                    //This one applies the expand function to all elements.
+            let charListWithDuplicates = 
+                List.collect expandWithDuplicate listWithCharPointTuple
+                
+            //printfn "Det her er den nye liste med ingen char dupes %A" charListWithDuplicates
+                
+                    //Make a list only consisting of chars
+            let listOnlyChars = charListWithDuplicates |> List.map fst
+            //printfn "Liste kun med chars %A" listOnlyChars
+
+
+                // - Making a word with letters in our hand
+            let rec findWord (listOfChars: list<char>) dict (word:string) = 
+                match listOfChars with
+                | [] -> printfn "Prøver at starte med næste bogstav i listen..."
+                        "Kunne ik lave et ord :/"
+                | head::tail ->
+                    printfn "Vi kører med det her %A" word
+                    match ScrabbleUtil.Dictionary.step head dict with
+                    | Some(isEnd: bool, nextDict) ->
+                        let newWord = word + (string head)
+                        printfn "Vi har gemt newword og har en some %A" newWord
+                        if (isEnd) then //if isEnd is true then a word is finished.
+                            printfn "Vi har fået true"
+                            newWord
+                        else 
+                            printfn "Vi har fået false, forsætter med %A i %A" newWord tail
+                            findWord tail nextDict newWord
+                    | None -> 
+                        let backtrackWord = word.Remove (word.Length-1)
+                        printfn "vi starter forfra for vi kunne ik lave et ord med %A, fortsæt med %A i %A" word backtrackWord tail
+                        findWord tail dict backtrackWord
+
+
+            let finalWord = findWord listOnlyChars st.dict ""
+
+            //Cant see the possible word because of the freaking big ass board, moving on assuming theres a word...
+
+                // - Start gathering info to make a move. 
+            
+                    //Coords
+            let evenOddCounter = 0
+            let isEven = evenOddCounter % 2 = 0
+            let firstMoveHasBeenPlaced: bool = false
+
+                    //Start coords
+            let (FirstMoveCoord:ScrabbleUtil.coord) =  (0,0)
+
+        
+            let letterToCoord: Map<coord, char> = Map.empty
+
+            
+                // - Function to incrementally place a word to the right or down.
+
+            let addCoords (t1:coord) (t2:coord) = coord (fst t1 + fst t2 , snd t1 + snd t2 )
+
+    
+                // - Function to connect a coordinate to the letter that will be placed on top of it later.
+            let rec placeWordOnCoords (latestCoord:coord) (word:list<char>) (way:coord) (mapToKeepTrack: Map<coord,char>) = 
+                match word with
+                | [] -> coord (0,0)
+                | firstLetter::remaining ->
+                    mapToKeepTrack |> Map.add latestCoord firstLetter
+                    let nextCoord = addCoords latestCoord way
+                    addCoords (placeWordOnCoords nextCoord remaining way mapToKeepTrack) way
+
+
+            
 
             //Put coords and char in our list
 
@@ -90,22 +179,7 @@ module Scrabble =
 
 
             //Figuring out how step works
-            let (chars:list<char>) = 'A'::'A'::'H'::[]
-
-            let findword list count =
-                let rec wordfinder list index=
-                    match ScrabbleUtil.Dictionary.step chars[index] st.dict with
-                        | Some t when fst t = false -> wordfinder list index+1
-                        | Some t -> 
-                        | None -> 0
-                wordfinder list 0
                 
-
-
-            let result = findword chars 0
-                
-            printfn "Step result: %A"  result
-
 
             //val step : char -> Dict -> (bool * Dict) option
 
@@ -152,8 +226,8 @@ module Scrabble =
             //printfn "Antallet af den første brik: %A" NumberOf
 
             //Få char af første brik, DEN HER TILGNGS MÅDE SKAL ÆNDRES, måske find ud af hvordan vi bruger characterValue?
-            let tempIntToCharFun (n:int) :char = char (int 'A' + n - 1)
-            let charint = tempIntToCharFun (int FirstID)
+            //let tempIntToCharFun (n:int) :char = char (int 'A' + n - 1)
+            //let charint = tempIntToCharFun (int FirstID)
             //printfn "Bogstav i første brik i vores hand: %A" charint
 
           
@@ -200,10 +274,6 @@ module Scrabble =
 
             // (coord * (uint32 * (char * int)))
             let input =  System.Console.ReadLine()
-
-            //Save some coordinate in a variable for easier writing later
-            let (FirstMoveCoord:ScrabbleUtil.coord) =  (0,0)
-
             
             //(<x-coordinate> <y-coordinate> <piece id><character><point-value> )
            
@@ -218,8 +288,8 @@ module Scrabble =
 
 
             //PRINTS
-            debugPrint (sprintf "Player %d -> Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
-            debugPrint (sprintf "Player %d <- Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
+            //debugPrint (sprintf "Player %d -> Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
+            //debugPrint (sprintf "Player %d <- Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
 
             //Receive the message 
             let msg = recv cstream

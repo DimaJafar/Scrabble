@@ -56,7 +56,10 @@
         match s with |R e -> Map.foldBack f e acc 
         
     let ofList (_ : 'a list) : MultiSet<'a> = R (Map.empty)
+    
     let toList (_ : MultiSet<'a>) : 'a list = []
+
+    let toList1 (R(s) : MultiSet<'a>) : ('a * uint32) list = s |> Map.toList
 
 
     let map (_ : 'a -> 'b) (_ : MultiSet<'a>) : MultiSet<'b> = R (Map.empty)
