@@ -118,33 +118,65 @@ module Scrabble =
                 // - Making a word with letters in our hand
             let rec findWord (listOfChars: list<char>) dict (word:string) = 
                 match listOfChars with
-                | [] -> printfn "Prøver at starte med næste bogstav i listen..."
-                        "Kunne ik lave et ord :/"
+                | [] -> ""
                 | head::tail ->
-                    printfn "Vi kører med det her %A" word
-                    match ScrabbleUtil.Dictionary.step head dict with
-                    | Some(isEnd: bool, nextDict) ->
-                        let newWord = word + (string head)
-                        printfn "Vi har gemt newword og har en some %A" newWord
-                        if (isEnd) then //if isEnd is true then a word is finished.
-                            printfn "Vi har fået true"
-                            newWord
-                        else 
-                            printfn "Vi har fået false, forsætter med %A i %A" newWord tail
-                            findWord tail nextDict newWord
-                    | None -> 
-                        let backtrackWord = word.Remove (word.Length-1)
-                        printfn "vi starter forfra for vi kunne ik lave et ord med %A, fortsæt med %A i %A" word backtrackWord tail
-                        findWord tail dict backtrackWord
+                    let newWord = word + head.ToString()
+                    printfn "New=%A" newWord
+                    match Dictionary.step head dict with
+                    | Some (true, newDict) ->
+                        newWord
+                    | Some (false, newDict) ->
+                        printfn "Ending with %A" newWord
+                        head.ToString() + findWord tail newDict ""
+                    | None ->
+                        printfn "Stop with %A" newWord
+                        ""
+        
+            // KOKO
+            let auxRemoveFromList (l: list<char>) (c: char) =
+                match l |> List.tryFindIndex (fun elm -> elm = c) with
+                | Some(index: int) -> l |> List.removeAt index
+                | None -> l
 
+            let rec findWordAux (l: list<char>) (d: Dictionary.Dict) =
+                match l with
+                | [] -> ""
+                | head::tail ->
+                    match Dictionary.step head d with
+                    | Some (true, _) -> head.ToString()
+                    | Some (false, newDict) -> head.ToString() + findWordAux tail newDict
 
-            let finalWord = findWord listOnlyChars st.dict ""
-
-            //Cant see the possible word because of the freaking big ass board, moving on assuming theres a word...
-
-                // - Start gathering info to make a move. 
+            let rec permutations (lst : char list) =
+                match lst with
+                | [] -> [[]]
+                | [x] -> [[x]]
+                | _ ->
+                    lst
+                    |> List.collect (fun x -> 
+                        lst
+                        |> List.filter ((<>) x)
+                        |> permutations
+                        |> List.map (fun y -> x::y))
             
-                    //Coords
+            // KOKO
+            let result = permutations listOnlyChars
+            let finalList = Set.ofList [for permutation: char list in result -> findWordAux (permutation) (st.dict)]
+            
+            //Cant see the possible word because of the freaking big ass board, moving on assuming theres a word...
+            //printfn "No. permutations = %A" result.Length
+            //printfn "Final            = %A" finalList
+
+            //Get word from set
+            let takeAnyElement (strings : Set<string>) =
+                match Set.minElement strings with
+                | "" -> printfn "Empty string found"; ""
+                | s -> s
+
+            let oneWord = takeAnyElement finalList
+            
+            // - Start gathering info to make a move. 
+            
+            //Coords
             let evenOddCounter = 0
             let isEven = evenOddCounter % 2 = 0
             let firstMoveHasBeenPlaced: bool = false
@@ -162,20 +194,18 @@ module Scrabble =
 
     
                 // - Function to connect a coordinate to the letter that will be placed on top of it later.
-            let rec placeWordOnCoords (latestCoord:coord) (word:list<char>) (way:coord) (mapToKeepTrack: Map<coord,char>) = 
+            let rec placeWordOnCoords (latestCoord:coord) (word:list<char>) (way:coord)  = 
                 match word with
-                | [] -> coord (0,0)
+                | [] -> (coord (0,0), "")
+                | firstLetter::remaining when remaining.Length = 1 -> (addCoords latestCoord way, string remaining.Head)
                 | firstLetter::remaining ->
-                    mapToKeepTrack |> Map.add latestCoord firstLetter
                     let nextCoord = addCoords latestCoord way
-                    addCoords (placeWordOnCoords nextCoord remaining way mapToKeepTrack) way
+                    placeWordOnCoords nextCoord remaining way
 
 
-            
-
+            let tupleOfCoord = placeWordOnCoords FirstMoveCoord (oneWord |> Seq.toList |> List.ofSeq) (coord (1,0))
+            printfn "Print this %A" tupleOfCoord
             //Put coords and char in our list
-
-
 
 
             //Figuring out how step works
@@ -309,7 +339,6 @@ module Scrabble =
             | RCM (CMGameOver _) -> ()
             | RCM a -> failwith (sprintf "not implmented: %A" a)
             | RGPE err -> printfn "Gameplay Error:\n%A" err; aux st
-
 
         aux st
 
