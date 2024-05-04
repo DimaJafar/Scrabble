@@ -79,6 +79,8 @@ module Scrabble =
 
             //Make a first move from hand starting on coords 0,0. 
 
+            
+
 
 
 
@@ -92,18 +94,22 @@ module Scrabble =
             //Figuring out how step works
             let (chars:list<char>) = 'A'::'A'::'H'::[]
 
-            let findword list count =
-                let rec wordfinder list index=
-                    match ScrabbleUtil.Dictionary.step chars[index] st.dict with
-                        | Some t when fst t = false -> wordfinder list index+1
-                        | Some t -> 
-                        | None -> 0
-                wordfinder list 0
+            let findword (chars: char list) =
+                let rec wordfinder (chars:char list) (word: string)  =
+                  match chars with 
+                   |[] -> printfn "Found word: %s" word
+                   |head::tail ->
+                    match Dictionary.step head st.dict with
+                        | Some (true, _) -> //det skal måske være anerledes, når den har fundet et ord skal den stop he
+                            let newWord = word + string head
+                            wordfinder tail newWord
+                        | Some (false, _) -> wordfinder tail word
+                        | None -> ()
+                wordfinder chars 
                 
 
 
-            let result = findword chars 0
-                
+            let result = findword chars                 
             printfn "Step result: %A"  result
 
 
@@ -209,7 +215,39 @@ module Scrabble =
            
             let move = RegEx.parseMove input
 
+
             
+
+            //RemoveTiles method, where we remove ms from hand 
+            let removeTiles (hand: MultiSet<uint32>) (ms: (coord * (uint32 * (char * int))) list) =
+               let rec removeTile  (tiles: (coord * (uint32 * (char * int))) list) (hand: MultiSet<uint32>)= 
+                 match tiles with 
+                 |[] -> hand 
+                 |(_, (tileId, (_))) :: tail -> 
+                 let updatedhand = removeSingle tileId hand
+                 removeTile tail updatedhand 
+               removeTile ms hand 
+
+            //AddTiles method, where we add newPieces to hand
+            let addTiles (hand: MultiSet<uint32>) (newPieces: (uint32 * uint32) list) =
+              let rec addTile (piece: (uint32 * uint32) list) (hand: MultiSet<uint32>) = 
+                 match piece with 
+                 | [] -> hand 
+                 | (tileId, count)  :: tail -> 
+                 let updatedHand = addSingle tileId hand
+                 addTile tail updatedHand  
+              addTile newPieces hand   
+ 
+
+                // List.fold (fun updatedHand (tileId, _)  -> addSingle tileId updatedHand ) hand newPieces
+           
+
+            //UpdateSate method, where we combine the two methods and the result is what we update st with hand with
+            let updateState (st: State.state) (ms: (coord * (uint32 * (char * int))) list) (newPieces: (uint32 * uint32) list) =
+                let removeTilesFromHand = removeTiles st.hand ms
+                let updateHandWithNewTiles = addTiles removeTilesFromHand newPieces
+                { st with hand = updateHandWithNewTiles }
+
 
             // END THE METHOD
 
@@ -222,11 +260,12 @@ module Scrabble =
             debugPrint (sprintf "Player %d <- Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
 
             //Receive the message 
+            //Now we use the UpdateState method and use st, ms and newPieces
             let msg = recv cstream
             match msg with
             | RCM (CMPlaySuccess(ms, points, newPieces)) ->
                 (* Successful play by you. Update your state (remove old tiles, add the new ones, change turn, etc) *)
-                let st' = st // This state needs to be updated
+                let st' = updateState st ms newPieces// This state needs to be updated
                 aux st'
             | RCM (CMPlayed (pid, ms, points)) ->
                 (* Successful play by other player. Update your state *)
