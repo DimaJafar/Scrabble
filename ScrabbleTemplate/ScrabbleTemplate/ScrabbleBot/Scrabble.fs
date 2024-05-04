@@ -218,7 +218,7 @@ module Scrabble =
 
             
 
-            //RemoveTiles method, where we remove ms from hand 
+            //RemoveTiles function, where we remove ms from hand 
             let removeTiles (hand: MultiSet<uint32>) (ms: (coord * (uint32 * (char * int))) list) =
                let rec removeTile  (tiles: (coord * (uint32 * (char * int))) list) (hand: MultiSet<uint32>)= 
                  match tiles with 
@@ -228,7 +228,7 @@ module Scrabble =
                  removeTile tail updatedhand 
                removeTile ms hand 
 
-            //AddTiles method, where we add newPieces to hand
+            //AddTiles function, where we add newPieces to hand
             let addTiles (hand: MultiSet<uint32>) (newPieces: (uint32 * uint32) list) =
               let rec addTile (piece: (uint32 * uint32) list) (hand: MultiSet<uint32>) = 
                  match piece with 
@@ -242,7 +242,7 @@ module Scrabble =
                 // List.fold (fun updatedHand (tileId, _)  -> addSingle tileId updatedHand ) hand newPieces
            
 
-            //UpdateSate method, where we combine the two methods and the result is what we update st with hand with
+            //UpdateSate function, where we combine the two functions and the result is what we update st with hand with
             let updateState (st: State.state) (ms: (coord * (uint32 * (char * int))) list) (newPieces: (uint32 * uint32) list) =
                 let removeTilesFromHand = removeTiles st.hand ms
                 let updateHandWithNewTiles = addTiles removeTilesFromHand newPieces
@@ -260,7 +260,7 @@ module Scrabble =
             debugPrint (sprintf "Player %d <- Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
 
             //Receive the message 
-            //Now we use the UpdateState method and use st, ms and newPieces
+            //Now we use the UpdateState function and use st, ms and newPieces
             let msg = recv cstream
             match msg with
             | RCM (CMPlaySuccess(ms, points, newPieces)) ->
