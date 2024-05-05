@@ -225,18 +225,13 @@ module Scrabble =
 
             let returnedMapOfCoords = MapCoordToLetter CoordToLetter FirstMoveCoord WordToList
 
-            forcePrint (sprintf "%A\n" returnedMapOfCoords)
+            //forcePrint (sprintf "%A\n" returnedMapOfCoords)
 
-
-
-            //St.Hand = (ID, antal:uint32)
-            printfn "%A" st.hand
-
-            //Pieces = Map <  uint32 , Set<char,int> >
+            //Pieces = Map <  uint32 , Set<char * int> >
 
             // HEJ
             // 'H'::'E'::'J'
-            // 0,0 'H'
+            // 0,0 'H' 
             // 1,0 'E'
             // 2,0 'J'
             // Vil have point til et bogstav:
@@ -246,12 +241,50 @@ module Scrabble =
 
 
 
+            let piecesValues = pieces.Values |> List.ofSeq
 
-            let findPoint charList =
-                for char in charList do
-                    match Map.tryFind char pieces with
-                    | 
-           
+            //PiecesValues Liste
+            //<('C', 3)>
+            //<('B', 4)> fst = B snd = 4
+
+            
+            //Somehow match each letter in our word with the "key" of our Set
+
+            let accumulatingList = List.Empty
+
+            let rec findCorrespondingPoint (ourWord:list<char>) (s:Set<char * int>) (l:list<char*int>)=
+                let t = s |> Set.toList |> List.head
+                match ourWord with
+                    | [] -> l
+                    | head::tail when (fst t) = head -> 
+                        let newList = l |> List.append [t]
+                        newList
+                    | head::tail -> 
+                        findCorrespondingPoint tail s l
+
+            let getPointsForAllLetters (ourWord:list<char>) = List.filter (fun x -> x <> []) [for eachSet in piecesValues do findCorrespondingPoint ourWord eachSet accumulatingList]
+
+            let callthis = getPointsForAllLetters WordToList
+            forcePrint (sprintf "%A" callthis) 
+
+            //ny list hvor []::l
+            //let hel = getPointsForAllLetters
+            //forcePrint (sprintf "%A" hel)
+
+
+
+            //NEW VARIBLES FOR ALL THINGS NEEDED FOR MOVE
+
+
+
+            
+
+
+            let extractPoints s = s |> Set.map snd |> Set.toList
+
+            let AllPoints = piecesValues |> List.map extractPoints |> List.concat
+
+            //printfn "%A" AllPoints
             
             //(<x-coordinate> <y-coordinate> <piece id><character><point-value> )
            
