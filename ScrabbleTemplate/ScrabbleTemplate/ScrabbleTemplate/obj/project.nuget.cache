@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "2m8yb+UBWOEWhF/lp28Hz/eFQthggIf9YZBInHr7th/zZ758O5s97u6F0Gp6cdqwqy61HzPN/CeyevbX2SN4fA==",
+  "dgSpecHash": "bYjt98qJvIApxBFnS+FP77xhLocvdZKhQY5jVsV+gt7xgXUMHKwfRwqy4Y62YFX0nC6aTR5c0iBbkZtL54caHA==",
   "success": true,
   "projectFilePath": "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleTemplate/ScrabbleTemplate.fsproj",
   "expectedPackageFiles": [
@@ -17,10 +17,7 @@
     "/Users/christina/.nuget/packages/system.reflection.primitives/4.3.0/system.reflection.primitives.4.3.0.nupkg.sha512",
     "/Users/christina/.nuget/packages/system.runtime/4.3.0/system.runtime.4.3.0.nupkg.sha512",
     "/Users/christina/.nuget/packages/system.text.encoding/4.3.0/system.text.encoding.4.3.0.nupkg.sha512",
-    "/Users/christina/.nuget/packages/system.threading.tasks/4.3.0/system.threading.tasks.4.3.0.nupkg.sha512",
-    "/Users/christina/.nuget/packages/microsoft.netcore.app.ref/7.0.16/microsoft.netcore.app.ref.7.0.16.nupkg.sha512",
-    "/Users/christina/.nuget/packages/microsoft.aspnetcore.app.ref/7.0.16/microsoft.aspnetcore.app.ref.7.0.16.nupkg.sha512",
-    "/Users/christina/.nuget/packages/microsoft.netcore.app.host.osx-x64/7.0.16/microsoft.netcore.app.host.osx-x64.7.0.16.nupkg.sha512"
+    "/Users/christina/.nuget/packages/system.threading.tasks/4.3.0/system.threading.tasks.4.3.0.nupkg.sha512"
   ],
   "logs": []
 }

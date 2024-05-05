@@ -36,7 +36,6 @@ module RegEx =
         Seq.toList
 
  module Print =
-
     let printString str = forcePrint str
 
     let printHand pieces hand =
@@ -115,7 +114,6 @@ module Scrabble =
         let rec aux (st : State.state) =
             Print.printHand pieces (State.hand st)
 
-<<<<<<< HEAD
             // Goal: Make a first move from hand starting on coords 0,0. 
             // Steps
                 // - Converting the multiset to a list, in order to access the items easilier with an index. 
@@ -151,63 +149,6 @@ module Scrabble =
                     //Make a list only consisting of chars
             let listOnlyChars = charListWithDuplicates |> List.map fst
             //printfn "Liste kun med chars %A" listOnlyChars
-=======
-            // remove the force print when you move on from manual input (or when you have learnt the format)
-            //forcePrint "Input move (format '(<x-coordinate> <y-coordinate> <piece id><character><point-value> )*', note the absence of space between the last inputs)\n\n"
-            
-            // ______________START THE NEW METHOD______________
-
-
-            //Make a first move from hand starting on coords 0,0. 
-
-            
-
-
-
-
-
-
-            //Put coords and char in our list
-
-
-
-
-            //Figuring out how step works
-            let (chars:list<char>) = 'A'::'A'::'H'::[]
-
-            let findword (chars: char list) =
-                let rec wordfinder (chars:char list) (word: string)  =
-                  match chars with 
-                   |[] -> printfn "Found word: %s" word
-                   |head::tail ->
-                    match Dictionary.step head st.dict with
-                        | Some (true, _) -> //det skal måske være anerledes, når den har fundet et ord skal den stop he
-                            let newWord = word + string head
-                            wordfinder tail newWord
-                        | Some (false, _) -> wordfinder tail word
-                        | None -> ()
-                wordfinder chars 
-                
-
-
-            let result = findword chars                 
-            printfn "Step result: %A"  result
-
-
-            //val step : char -> Dict -> (bool * Dict) option
-
-
-
-
-
-
-
-
-
-
-
-
->>>>>>> UpdateState
 
             let ListOfPossibleCombinations = Word.permute listOnlyChars
             let unique = 
@@ -222,17 +163,11 @@ module Scrabble =
                 if (toList unique).IsEmpty then
                     "no words"
                 else
-                    sprintf "There is %A elements: %A but we go with the first: %A" finalWordList.Length finalWordList finalWordList.Head
+                    sprintf "There is %A elements: %A but we go with the first: %A\n" finalWordList.Length finalWordList finalWordList.Head
 
             Print.printString fi 
             
-
-
-
-
-
-
-
+            let wordToUse = finalWordList.Head
 
 
 
@@ -241,50 +176,86 @@ module Scrabble =
             //Coords
             let evenOddCounter = 0
             let isEven = evenOddCounter % 2 = 0
-            let firstMoveHasBeenPlaced: bool = false
+            
+            
+            let mutable firstMoveHasBeenPlaced: bool = false
 
                     //Start coords
             let (FirstMoveCoord:ScrabbleUtil.coord) =  (0,0)
 
-        
-            let letterToCoord: Map<coord, char> = Map.empty
 
-            
-                // - Function to incrementally place a word to the right or down.
+            let CoordToLetter: Map<coord, char> = Map.empty
+
                 //Plus two coords together like a tuple (1,0) + (2,1) = (3,1)
             let addCoords (t1:coord) (t2:coord) = coord (fst t1 + fst t2 , snd t1 + snd t2 )
 
 
-    
+            //ON EVEN 0 , 2 , 4 , 6 , 8
+                // + (1,0)
+
+            //ON ODD 1 , 3 , 5 , 7 , 9
+
+
+
+            let rec MapCoordToLetter (CoordMap:Map<coord,char>) (StartCoord:coord) (charList:list<char>) = 
+                match charList with
+                | [] -> CoordMap
+                | firstLetter::remaining when firstMoveHasBeenPlaced=false -> 
+                    let firstCoord = (coord (0,0))
+                    let updatedCoordMap = CoordMap |> Map.add firstCoord  firstLetter
+                    let nextCoord = addCoords firstCoord (coord (1 ,0))
+                    firstMoveHasBeenPlaced <- true
+                    MapCoordToLetter updatedCoordMap nextCoord remaining
+
+                | firstLetter::remaining when firstMoveHasBeenPlaced=true && isEven=false -> //ON ODD LEVEL
+                    let updatedCoordMap = CoordMap |> Map.add StartCoord firstLetter
+                    let nextCoord = addCoords StartCoord (coord (0 ,1))
+                    MapCoordToLetter updatedCoordMap nextCoord remaining
+
+
+                | firstLetter::remaining when firstMoveHasBeenPlaced=true && isEven=true -> //ON EVEN LEVEL
+                    let updatedCoordMap = CoordMap |> Map.add StartCoord firstLetter
+                    let nextCoord = addCoords StartCoord (coord (1 ,0))
+                    MapCoordToLetter updatedCoordMap nextCoord remaining
+
+
+
+            let WordToList = Seq.toList wordToUse
+
+
+            let returnedMapOfCoords = MapCoordToLetter CoordToLetter FirstMoveCoord WordToList
+
+            forcePrint (sprintf "%A\n" returnedMapOfCoords)
+
+
+
+            //St.Hand = (ID, antal:uint32)
+            printfn "%A" st.hand
+
+            //Pieces = Map <  uint32 , Set<char,int> >
+
+            // HEJ
+            // 'H'::'E'::'J'
+            // 0,0 'H'
+            // 1,0 'E'
+            // 2,0 'J'
+            // Vil have point til et bogstav:
+                // Vil matche med tryFind for at få fat i pieces' set som indeholder point som dens second value. 
+                    //Dette skal bruge et ID, for man skal matche med key, og pieces key er = ID af en brik
+                // Vil gerne have tilsvarende value i det set, givet en char //this has a method
 
 
 
 
-
-
-
-
-
-
-
-
-
-                // - Function to connect a coordinate to the letter that will be placed on top of it later.
-            let rec placeWordOnCoords (latestCoord:coord) (word:list<char>) (way:coord)  = 
-                match word with
-                | [] -> (coord (0,0), "")
-                | firstLetter::remaining when remaining.Length = 1 -> (addCoords latestCoord way, string remaining.Head)
-                | firstLetter::remaining ->
-                    let nextCoord = addCoords latestCoord way
-                    placeWordOnCoords nextCoord remaining way
-
+            let findPoint charList =
+                for char in charList do
+                    match Map.tryFind char pieces with
+                    | 
+           
             
             //(<x-coordinate> <y-coordinate> <piece id><character><point-value> )
            
-<<<<<<< HEAD
             //let move = RegEx.parseMove input
-=======
-            let move = RegEx.parseMove input
 
 
             
@@ -322,7 +293,6 @@ module Scrabble =
 
             // END THE METHOD
 
->>>>>>> UpdateState
             //Send "Move" variable to the stream 
             //send cstream (SMPlay move)
 

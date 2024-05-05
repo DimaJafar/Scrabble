@@ -1,13 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "TJimbjtAirvord6vszvcpt2ESO38K+6GeTTubgbwLO618DhHOUGsd3RBXmOxUeBfeVzwXi845i9v1bRyeAzweg==",
+  "dgSpecHash": "unilTiLM9KhKW8FBzIJ0NSNxxCXUfHphan6nP2xcZ5wvsArPBunY4kYiQ631bkxfr738pJHzh9mcj0t9Y87lmw==",
   "success": true,
   "projectFilePath": "/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/ScrabbleBot.fsproj",
   "expectedPackageFiles": [
     "/Users/christina/.nuget/packages/fparsec/1.1.1/fparsec.1.1.1.nupkg.sha512",
-    "/Users/christina/.nuget/packages/fsharp.core/7.0.200/fsharp.core.7.0.200.nupkg.sha512",
-    "/Users/christina/.nuget/packages/microsoft.netcore.app.ref/7.0.16/microsoft.netcore.app.ref.7.0.16.nupkg.sha512",
-    "/Users/christina/.nuget/packages/microsoft.aspnetcore.app.ref/7.0.16/microsoft.aspnetcore.app.ref.7.0.16.nupkg.sha512"
+    "/Users/christina/.nuget/packages/fsharp.core/7.0.200/fsharp.core.7.0.200.nupkg.sha512"
   ],
   "logs": []
 }

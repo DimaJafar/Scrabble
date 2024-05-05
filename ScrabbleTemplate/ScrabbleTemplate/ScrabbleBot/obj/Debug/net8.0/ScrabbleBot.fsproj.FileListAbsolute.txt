@@ -1,0 +1,15 @@
+/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/bin/Debug/net8.0/ScrabbleBot.deps.json
+/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/bin/Debug/net8.0/ScrabbleBot.dll
+/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/bin/Debug/net8.0/ScrabbleBot.pdb
+/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/bin/Debug/net8.0/ScrabbleLib.dll
+/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/bin/Debug/net8.0/ScrabbleUtil.dll
+/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/obj/Debug/net8.0/ScrabbleBot.fsproj.AssemblyReference.cache
+/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/obj/Debug/net8.0/ScrabbleBot.AssemblyInfoInputs.cache
+/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/obj/Debug/net8.0/ScrabbleBot.AssemblyInfo.fs
+/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/obj/Debug/net8.0/ScrabbleBot.fsproj.CoreCompileInputs.cache
+/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/obj/Debug/net8.0/ScrabbleBot.sourcelink.json
+/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/obj/Debug/net8.0/Scrabble.3728C117.Up2Date
+/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/obj/Debug/net8.0/ScrabbleBot.dll
+/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/obj/Debug/net8.0/refint/ScrabbleBot.dll
+/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/obj/Debug/net8.0/ScrabbleBot.pdb
+/Users/christina/Desktop/Scrabble/ScrabbleTemplate/ScrabbleTemplate/ScrabbleBot/obj/Debug/net8.0/ref/ScrabbleBot.dll
