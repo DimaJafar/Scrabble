@@ -63,6 +63,48 @@ module State =
     let playerNumber st  = st.playerNumber
     let hand st          = st.hand
 
+
+module Word =
+    let rec findWord (listOfChars: list<char>) dict (word:string) = 
+        match listOfChars with
+        | [] -> ""
+        | head::x::tail ->
+            let mutable newWord = word + head.ToString()
+            match Dictionary.step head dict with
+            | Some (true, newDict) ->
+                newWord
+            | Some (false, newDict) ->
+                findWord (x::tail) newDict newWord
+            | None ->
+                newWord
+        | head::tail ->
+            let mutable newWord = word + head.ToString()
+            match Dictionary.step head dict with
+            | Some (true, newDict) ->
+                newWord
+            | Some (false, newDict) ->
+                newWord
+            | None ->
+                newWord
+
+    let permute list =
+        let rec inserts e = function
+            | [] -> [[e]]
+            | x::xs as list -> (e::list)::(inserts e xs |> List.map (fun xs' -> x::xs'))
+
+        List.fold (fun accum x -> List.collect (inserts x) accum) [[]] list
+
+    let traverse fstChar listChars dict =
+        let dictN = 
+            match Dictionary.step fstChar dict with
+            | Some (_ , dictN) -> dictN
+            | None -> failwith "no dict"
+        
+        match findWord listChars (dictN) "" with
+        | word when (Dictionary.lookup (sprintf "%c%s" fstChar  word) dict) -> (sprintf "%c%s" fstChar  word)
+        | word when not (Dictionary.lookup (sprintf "%c%s" fstChar  word) dict) -> ""
+        | _ -> ""
+
 module Scrabble =
     open System.Threading
 
@@ -71,121 +113,7 @@ module Scrabble =
         let (coordChar: list<(coord * char)>) = []
 
         let rec aux (st : State.state) =
-            //Print.printHand pieces (State.hand st)
-            Print.printString "hi"
-
-            let rec findWord (listOfChars: list<char>) dict (word:string) = 
-                match listOfChars with
-                | [] -> 
-                    printfn "reached empty list with %A" word
-                    ""
-                | head::x::tail ->
-                    printfn "Working with %A" listOfChars
-                    let mutable newWord = word + head.ToString()
-                    printfn "New=%A" newWord
-                    match Dictionary.step head dict with
-                    | Some (true, newDict) ->
-                        printfn "step with %A mid %A" head x
-                        printfn "Reached final word in search %A" newWord
-                        newWord
-                    | Some (false, newDict) ->
-                        printfn "step with %A" head
-                        printfn "continuing with %A" newWord
-                        findWord (x::tail) newDict newWord
-                    | None ->
-                        printfn "step with %A" head
-                        printfn "Stop with %A" newWord
-                        newWord
-                | head::tail ->
-                    printfn "Now at the end of %A" listOfChars
-                    let mutable newWord = word + head.ToString()
-                    printfn "New=%A" newWord
-                    match Dictionary.step head dict with
-                    | Some (true, newDict) ->
-                        //printfn "step with %A mid %A" head tail
-                        printfn "Reached final word in search %A" newWord
-                        newWord
-                    | Some (false, newDict) ->
-                        printfn "step with %A" head
-                        printfn "try returning anyways with %A" newWord
-                        newWord
-                    | None ->
-                        printfn "step with %A" head
-                        printfn "Stop with %A" newWord
-                        newWord
-            
-            let changeOrder lst =
-                match lst with
-                | [] -> 
-                    printfn "Empty list to change"
-                    []
-                | head::_ -> List.append (List.filter (fun x -> x <> head) lst) [head]
-           
-            let rec permutations (lst : char list) =
-                    match lst with
-                    | [] -> [[]]
-                    | [x] -> [[x]]
-                    | _ ->
-                        lst
-                        |> List.collect (fun x -> 
-                            lst
-                            |> List.filter ((<>) x)
-                            |> permutations
-                            |> List.map (fun y -> x::y))
-
-
-            let rec traverse fstChar listChars dict =
-                let dictN = 
-                    match Dictionary.step fstChar dict with
-                    | Some (_ , dictN) -> dictN
-                    | None -> failwith "no dict"
-                
-                printfn "%A" dictN
-                
-                match findWord listChars (dictN) "" with
-                | word when (Dictionary.lookup (sprintf "%c%s" fstChar  word) dict) ->
-                    printfn "Finding word with %A" (sprintf "%c%s" fstChar  word)
-                    (sprintf "%c%s" fstChar  word)
-                | word when not (Dictionary.lookup (sprintf "%c%s" fstChar  word) dict) -> 
-                    printfn "Not in dict %A" (sprintf "%c%s" fstChar  word)
-                    ""
-                    //traverse fstChar (changeOrder listChars) dict
-                    
-                    // let result = permutations listChars
-                    // //let result = List.filter (fun x -> x <> listChars) t
-                    // printfn "%A" result
-                    // let wordList = [for permutation: char list in result -> traverse fstChar (permutation) dict]
-                    // "Out of the finding"
-                    
-                    // match wordList with
-                    // | [] -> 
-                    //     printfn "No words" 
-                    //     ""
-                    // | _ -> wordList.Head
-                | _ -> 
-                    printfn "Ends here"
-                    ""
-
-            let lis = 'Y'::'X'::'A'::[]
-            let result = permutations lis
-            let unique = Set.ofList [for permutation: char list in result -> traverse 'L' (permutation) (st.dict)]
-
-            let toList s = Set.fold (fun l se -> se::l) [] s
-            
-            let finalWordList = List.filter (fun x -> x <> "") (toList unique)
-
-            let fi = 
-                if (toList unique).IsEmpty then
-                    "no words"
-                else
-                    sprintf "There is %A elements: %A but we go with the first: %A" finalWordList.Length finalWordList finalWordList.Head
-
-            Print.printString fi 
-            // remove the force print when you move on from manual input (or when you have learnt the format)
-            //forcePrint "Input move (format '(<x-coordinate> <y-coordinate> <piece id><character><point-value> )*', note the absence of space between the last inputs)\n\n"
-            
-            // ______________START THE NEW METHOD______________
-
+            Print.printHand pieces (State.hand st)
 
             // Goal: Make a first move from hand starting on coords 0,0. 
             // Steps
@@ -197,7 +125,6 @@ module Scrabble =
 
 
                 // - Getting the corresponding letter (char) from the ID (uint32)
-
                     //This one takes a tuple (ID, count) and converts the ID to a corresponding char, and returns a new tuple (char, count)
             let tempIntToCharFun ( ID:uint32 , count:uint32 ) : (char * uint32) = ( char (int 'A' + (int ID) - 1) , count )
                     
@@ -224,55 +151,33 @@ module Scrabble =
             let listOnlyChars = charListWithDuplicates |> List.map fst
             //printfn "Liste kun med chars %A" listOnlyChars
 
+            let ListOfPossibleCombinations = Word.permute listOnlyChars
+            let unique = 
+                Set.ofList [for permutation: char list in ListOfPossibleCombinations -> 
+                            Word.traverse 'L' (permutation) (st.dict)]
 
-                // - Making a word with letters in our hand
-            // KOKO
-            let auxRemoveFromList (l: list<char>) (c: char) =
-                match l |> List.tryFindIndex (fun elm -> elm = c) with
-                | Some(index: int) -> l |> List.removeAt index
-                | None -> l
-
-            let rec findWordAux (l: list<char>) (d: Dictionary.Dict) =
-                match l with
-                | [] -> ""
-                | head::tail ->
-                    match Dictionary.step head d with
-                    | Some (true, _) -> head.ToString()
-                    | Some (false, newDict) -> head.ToString() + findWordAux tail newDict
-
-            let rec permutations (lst : char list) =
-                match lst with
-                | [] -> [[]]
-                | [x] -> [[x]]
-                | _ ->
-                    lst
-                    |> List.collect (fun x -> 
-                        lst
-                        |> List.filter ((<>) x)
-                        |> permutations
-                        |> List.map (fun y -> x::y))
+            let toList s = Set.fold (fun l se -> se::l) [] s
             
-            // KOKO
-            let result = permutations listOnlyChars
-            let finalList = [for permutation: char list in result -> findWordAux (permutation) (st.dict)]
+            let finalWordList = List.filter (fun x -> x <> "") (toList unique)
+
+            let fi = 
+                if (toList unique).IsEmpty then
+                    "no words"
+                else
+                    sprintf "There is %A elements: %A but we go with the first: %A" finalWordList.Length finalWordList finalWordList.Head
+
+            Print.printString fi 
             
-            //Cant see the possible word because of the freaking big ass board, moving on assuming theres a word...
-            //printfn "No. permutations = %A" result.Length
-            //printfn "Final            = %A" finalList
-            
-            
-        
-        
 
 
-            //Get word from set
-            let takeAnyElement (strings : Set<string>) =
-                match Set.minElement strings with
-                | "" -> printfn "Empty string found"; ""
-                | s -> s
 
-            //let oneWord = takeAnyElement finalList
-            
+
+
+
+
+
+
+
             // - Start gathering info to make a move. 
             
             //Coords
@@ -288,10 +193,24 @@ module Scrabble =
 
             
                 // - Function to incrementally place a word to the right or down.
-
+                //Plus two coords together like a tuple (1,0) + (2,1) = (3,1)
             let addCoords (t1:coord) (t2:coord) = coord (fst t1 + fst t2 , snd t1 + snd t2 )
 
+
     
+
+
+
+
+
+
+
+
+
+
+
+
+
                 // - Function to connect a coordinate to the letter that will be placed on top of it later.
             let rec placeWordOnCoords (latestCoord:coord) (word:list<char>) (way:coord)  = 
                 match word with
@@ -301,117 +220,10 @@ module Scrabble =
                     let nextCoord = addCoords latestCoord way
                     placeWordOnCoords nextCoord remaining way
 
-
-            //let tupleOfCoord = placeWordOnCoords FirstMoveCoord (oneWord |> Seq.toList |> List.ofSeq) (coord (1,0))
-            //printfn "Print this %A" tupleOfCoord
-            //Put coords and char in our list
-
-
-            //Figuring out how step works
-                
-
-            //val step : char -> Dict -> (bool * Dict) option
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            //_____________RANDOM PRINT_________
-            
-            //Få fat i brikker med st.hand
-            //Multiset (ID, antal); (ID, antal); (ID, antal); (ID, antal); (ID, antal);  
-            let ourhand: MultiSet<uint32> = st.hand
-            //printfn "Vores hand består af disse (ID, ANTAL) \n %A" ourhand
-            
-            //Få ID af det første bogstav af vores brikker
-            let (FirstID:uint32) = firstKey ourhand
-            //printfn "ID af første brik i vores hand: %A" FirstID
-
-            let NumberOf = numItems FirstID ourhand
-            //printfn "Antallet af den første brik: %A" NumberOf
-
-            //Få char af første brik, DEN HER TILGNGS MÅDE SKAL ÆNDRES, måske find ud af hvordan vi bruger characterValue?
-            //let tempIntToCharFun (n:int) :char = char (int 'A' + n - 1)
-            //let charint = tempIntToCharFun (int FirstID)
-            //printfn "Bogstav i første brik i vores hand: %A" charint
-
-          
-            //Pieces contains all possible tiles and their points
-            // uint32 = ID     'a = set [char, point]
-            let printthis = pieces
-            //printfn "Print this here: %A" printthis
-            
-            //Få key til pieces. Keys er ID'erne
-            //let piecesKeys = pieces.Keys 
-            //printfn "Keys af alle brikker %A" piecesKeys
-
-            //Alle values. Values i "pieces" er set. Et set er [('A',1)]
-            //let piecesValues = pieces.Values |> List.ofSeq
-            //printfn "Values af alle brikker %A" piecesValues
-
-            //Board? Se hvad board indeholder og hvad det er?
-            let readBoard = st.board
-            //debugPrint (sprintf "Board information: %A" readBoard )
-
-
-            //Få point value af en brik, ved at tage den anden værdi i et set. 
-            let setValue s = 
-                match Set.toList s with
-                | [(_, point)] -> point
-
-            //En liste af alle values uden den første, fordi den første er Wild Card
-            let RemoveWildCard listOfValues = List.tail listOfValues
-            //let valuesNoWildCard = RemoveWildCard piecesValues
-
-            //Point af en brik givet i settet.
-            //let PointValues = valuesNoWildCard |> List.map setValue
-            //printfn "Point til hver brik i set: %A" PointValues
-
-            //Look at a starting position on the board and a direction you want to type in.
-            //Is there a tile on the board, add that tile and increase the coordinate to the next one and repeat.
-            //If there is no tile on the board pick a tile from your hand
-
-
-
-
-
-
-
-            // (coord * (uint32 * (char * int)))
-            //let input =  System.Console.ReadLine()
             
             //(<x-coordinate> <y-coordinate> <piece id><character><point-value> )
            
             //let move = RegEx.parseMove input
-
-            
-
-            // END THE METHOD
-
             //Send "Move" variable to the stream 
             //send cstream (SMPlay move)
 
