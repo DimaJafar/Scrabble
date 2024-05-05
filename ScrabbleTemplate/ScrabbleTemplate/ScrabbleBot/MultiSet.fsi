@@ -27,6 +27,8 @@
     val ofList : 'a list -> MultiSet<'a>
     val toList : MultiSet<'a> -> 'a list
 
+    val toList1 : MultiSet<'a> -> ('a * uint32) list
+
 
     val map : ('a -> 'b) -> MultiSet<'a> -> MultiSet<'b>
 

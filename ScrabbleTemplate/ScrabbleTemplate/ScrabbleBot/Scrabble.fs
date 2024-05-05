@@ -11,6 +11,8 @@ open StateMonad
 
 open ScrabbleUtil.DebugPrint
 
+open ScrabbleLib
+
 // The RegEx module is only used to parse human input. It is not used for the final product.
 
 module RegEx =
@@ -35,6 +37,8 @@ module RegEx =
 
  module Print =
 
+    let printString str = forcePrint str
+
     let printHand pieces hand =
         hand |>
         MultiSet.fold (fun _ x i -> forcePrint (sprintf "%d -> (%A, %d)\n" x (Map.find x pieces) i)) ()
@@ -46,7 +50,7 @@ module State =
     // information, such as number of players, player turn, etc.
 
     type state = {
-        board         : Parser.board
+        board         : Parser.board//int * int -> bool
         dict          : ScrabbleUtil.Dictionary.Dict
         playerNumber  : uint32
         hand          : MultiSet.MultiSet<uint32>
@@ -59,69 +63,174 @@ module State =
     let playerNumber st  = st.playerNumber
     let hand st          = st.hand
 
+
+module Word =
+    let rec findWord (listOfChars: list<char>) dict (word:string) = 
+        match listOfChars with
+        | [] -> ""
+        | head::x::tail ->
+            let mutable newWord = word + head.ToString()
+            match Dictionary.step head dict with
+            | Some (true, newDict) ->
+                newWord
+            | Some (false, newDict) ->
+                findWord (x::tail) newDict newWord
+            | None ->
+                newWord
+        | head::tail ->
+            let mutable newWord = word + head.ToString()
+            match Dictionary.step head dict with
+            | Some (true, newDict) ->
+                newWord
+            | Some (false, newDict) ->
+                newWord
+            | None ->
+                newWord
+
+    let permute list =
+        let rec inserts e = function
+            | [] -> [[e]]
+            | x::xs as list -> (e::list)::(inserts e xs |> List.map (fun xs' -> x::xs'))
+
+        List.fold (fun accum x -> List.collect (inserts x) accum) [[]] list
+
+    let traverse fstChar listChars dict =
+        let dictN = 
+            match Dictionary.step fstChar dict with
+            | Some (_ , dictN) -> dictN
+            | None -> failwith "no dict"
+        
+        match findWord listChars (dictN) "" with
+        | word when (Dictionary.lookup (sprintf "%c%s" fstChar  word) dict) -> (sprintf "%c%s" fstChar  word)
+        | word when not (Dictionary.lookup (sprintf "%c%s" fstChar  word) dict) -> ""
+        | _ -> ""
+
 module Scrabble =
     open System.Threading
 
     let playGame cstream pieces (st : State.state) =
 
+        let (coordChar: list<(coord * char)>) = []
+
         let rec aux (st : State.state) =
             Print.printHand pieces (State.hand st)
 
-            // remove the force print when you move on from manual input (or when you have learnt the format)
-            //forcePrint "Input move (format '(<x-coordinate> <y-coordinate> <piece id><character><point-value> )*', note the absence of space between the last inputs)\n\n"
+            // Goal: Make a first move from hand starting on coords 0,0. 
+            // Steps
+                // - Converting the multiset to a list, in order to access the items easilier with an index. 
+            let ourHand: MultiSet<uint32> = st.hand
+            let listOfMultiset = MultiSet.toList1 ourHand
+            //printfn "Vores hand består af disse (ID, ANTAL) \n %A" listOfMultiset
+            //[(0u, 1u); (4u, 1u); (5u, 1u); (8u, 1u); (15u, 1u); (18u, 1u); (20u, 1u)]
+
+
+                // - Getting the corresponding letter (char) from the ID (uint32)
+                    //This one takes a tuple (ID, count) and converts the ID to a corresponding char, and returns a new tuple (char, count)
+            let tempIntToCharFun ( ID:uint32 , count:uint32 ) : (char * uint32) = ( char (int 'A' + (int ID) - 1) , count )
+                    
+                    //This one uses the function above on every element of the listOfMultiset, and returns a new list where ID's are now chars instead.
+            let listWithCharPointTuple = List.map tempIntToCharFun listOfMultiset
+            //printfn "Vores hand består af disse (CHAR, ANTAL) \n %A" listWithCharPointTuple
+
+
+                // - Check the counts for possible duplicate letters and seperate them to individual items
+                    // - ('A', 2) -> ('A', 1) ('A', 1)
+            let expandWithDuplicate ( letter:char , count: uint32 ) =
+                match count with
+                | count when count = 1u -> [( letter , count )] //Do nothing to the tuple if there is no duplicate
+                | count                  -> List.replicate (int count) (letter , 1u)
+                //Replicate the tuple "count" times, where the count of a letter is now 1 
+
+                    //This one applies the expand function to all elements.
+            let charListWithDuplicates = 
+                List.collect expandWithDuplicate listWithCharPointTuple
+                
+            //printfn "Det her er den nye liste med ingen char dupes %A" charListWithDuplicates
+                
+                    //Make a list only consisting of chars
+            let listOnlyChars = charListWithDuplicates |> List.map fst
+            //printfn "Liste kun med chars %A" listOnlyChars
+
+            let ListOfPossibleCombinations = Word.permute listOnlyChars
+            let unique = 
+                Set.ofList [for permutation: char list in ListOfPossibleCombinations -> 
+                            Word.traverse 'L' (permutation) (st.dict)]
+
+            let toList s = Set.fold (fun l se -> se::l) [] s
             
-            // ______________START THE NEW METHOD______________
-            
-            
-            //Få fat i brikker med st.hand
-            //Multiset (ID, antal); (ID, antal); (ID, antal); (ID, antal); (ID, antal);  
-            let ourhand: MultiSet<uint32> = st.hand
-            printfn "%A" ourhand
-            
-            //Få ID af det første bogstav af vores brikker
-            let (FirstID:uint32) = firstKey ourhand
-            printfn "%A" FirstID
+            let finalWordList = List.filter (fun x -> x <> "") (toList unique)
 
+            let fi = 
+                if (toList unique).IsEmpty then
+                    "no words"
+                else
+                    sprintf "There is %A elements: %A but we go with the first: %A" finalWordList.Length finalWordList finalWordList.Head
 
-            //Få char af første brik, DEN HER TILGNGS MÅDE SKAL ÆNDRES, måske find ud af hvordan vi bruger characterValue?
-            let tempIntToCharFun (n:int) :char = char (int 'A' + n - 1)
-            let charint = tempIntToCharFun (int FirstID)
-            printfn "%A" charint
-
-            //Pieces contains all possible tiles and their points
-            // uint32 = ID     'a = set [char, point]
-            let printthis = pieces
-            printfn "Print this here: %A" printthis
-            
-            //Get the key 
-
-            //Få point value af første brik
+            Print.printString fi 
             
 
 
 
-            // (coord * (uint32 * (char * int)))
-            let input =  System.Console.ReadLine()
 
-            //Save some coordinate in a variable for easier writing later
+
+
+
+
+
+
+            // - Start gathering info to make a move. 
+            
+            //Coords
+            let evenOddCounter = 0
+            let isEven = evenOddCounter % 2 = 0
+            let firstMoveHasBeenPlaced: bool = false
+
+                    //Start coords
             let (FirstMoveCoord:ScrabbleUtil.coord) =  (0,0)
+
+        
+            let letterToCoord: Map<coord, char> = Map.empty
+
+            
+                // - Function to incrementally place a word to the right or down.
+                //Plus two coords together like a tuple (1,0) + (2,1) = (3,1)
+            let addCoords (t1:coord) (t2:coord) = coord (fst t1 + fst t2 , snd t1 + snd t2 )
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+                // - Function to connect a coordinate to the letter that will be placed on top of it later.
+            let rec placeWordOnCoords (latestCoord:coord) (word:list<char>) (way:coord)  = 
+                match word with
+                | [] -> (coord (0,0), "")
+                | firstLetter::remaining when remaining.Length = 1 -> (addCoords latestCoord way, string remaining.Head)
+                | firstLetter::remaining ->
+                    let nextCoord = addCoords latestCoord way
+                    placeWordOnCoords nextCoord remaining way
 
             
             //(<x-coordinate> <y-coordinate> <piece id><character><point-value> )
            
-            let move = RegEx.parseMove input
-
-            
-
-            // END THE METHOD
-
+            //let move = RegEx.parseMove input
             //Send "Move" variable to the stream 
-            send cstream (SMPlay move)
+            //send cstream (SMPlay move)
 
 
             //PRINTS
-            debugPrint (sprintf "Player %d -> Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
-            debugPrint (sprintf "Player %d <- Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
+            //debugPrint (sprintf "Player %d -> Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
+            //debugPrint (sprintf "Player %d <- Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
 
             //Receive the message 
             let msg = recv cstream
@@ -142,7 +251,6 @@ module Scrabble =
             | RCM a -> failwith (sprintf "not implmented: %A" a)
             | RGPE err -> printfn "Gameplay Error:\n%A" err; aux st
 
-
         aux st
 
     let startGame 
@@ -155,17 +263,18 @@ module Scrabble =
             (tiles : Map<uint32, tile>)
             (timeout : uint32 option) 
             (cstream : Stream) =
-        debugPrint 
-            (sprintf "Starting game!
-                      number of players = %d
-                      player id = %d
-                      player turn = %d
-                      hand =  %A
-                      timeout = %A\n\n" numPlayers playerNumber playerTurn hand timeout)
+        // debugPrint 
+        //     (sprintf "Starting game!
+        //               number of players = %d
+        //               player id = %d
+        //               player turn = %d
+        //               hand =  %A
+        //               timeout = %A\n\n" numPlayers playerNumber playerTurn hand timeout)
 
         //let dict = dictf true // Uncomment if using a gaddag for your dictionary
         let dict = dictf false // Uncomment if using a trie for your dictionary
         let board = Parser.mkBoard boardP
+        //let board = ScrabbleLib.simpleBoardLangParser.parseSimpleBoardProg boardP
                   
         let handSet = List.fold (fun acc (x, k) -> MultiSet.add x k acc) MultiSet.empty hand
 
