@@ -235,11 +235,27 @@ module Scrabble =
                     | head::tail -> 
                         findCorrespondingPoint tail letter l
 
+            //Den her metode havde det problem at den matche vores bogstaver i alfabetisk rækkefølge, så vi går fra et ord "GAY" til "AGY" hvilket er et problem
             let getPointsForAllLetters (ourWord:list<char>) = List.filter (fun x -> x <> []) [for eachSet in piecesValues do findCorrespondingPoint ourWord eachSet accumulatingList]
 
 
+            //Den her fikser problemet fordi den nu tager 1 af vores word letter af gangen, og matcher den med piecesvalues. Men nu matcher A med wildcard A. 
+            //
+            let rec findCorrespondingPoint1 (ourLetter:char) (allLetters:list< Set<char * int> >) (l:list<char*int>)=
+                match allLetters with
+                | [] -> l
+                | head::tail when (head |> Set.toList |> List.head |> fst) = ourLetter  -> 
+                    let newList = List.append l [head |> Set.toList |> List.head] //This is a tuple
+                    newList
+                | head::tail -> 
+                    findCorrespondingPoint1 ourLetter tail l
+
+
+            //This is in the right order, but it matches the wildcard first?? Even though we dont have a wildcard
+            let getPointsForAllLetters1 (ourWord:list<char>) = List.filter (fun x -> x <> []) [for letter in ourWord do findCorrespondingPoint1 letter piecesValues accumulatingList]
+
             //Det her bytter om på rækkefølgen....
-            let PointsForLettersInWord = getPointsForAllLetters WordToList
+            let PointsForLettersInWord = getPointsForAllLetters1 WordToList
             forcePrint (sprintf "Points for letters: \n%A\n" PointsForLettersInWord) 
 
             
@@ -295,7 +311,7 @@ module Scrabble =
             //(<x-coordinate> <y-coordinate> <piece id><character><point-value> )
            
             //let move = RegEx.parseMove input
-            let move = listOfCoordIdCharPointTuples
+            //let move = listOfCoordIdCharPointTuples
 
             
 
@@ -332,7 +348,7 @@ module Scrabble =
 
 
             //Send "Move" variable to the stream 
-            send cstream (SMPlay move)
+            //send cstream (SMPlay move)
 
 
             //PRINTS
