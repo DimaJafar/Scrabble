@@ -93,16 +93,24 @@ module Word =
 
         List.fold (fun accum x -> List.collect (inserts x) accum) [[]] list
 
-    let traverse fstChar listChars dict =
-        let dictN = 
-            match Dictionary.step fstChar dict with
-            | Some (_ , dictN) -> dictN
-            | None -> failwith "no dict"
-        
-        match findWord listChars (dictN) "" with
-        | word when (Dictionary.lookup (sprintf "%c%s" fstChar  word) dict) -> (sprintf "%c%s" fstChar  word)
-        | word when not (Dictionary.lookup (sprintf "%c%s" fstChar  word) dict) -> ""
-        | _ -> ""
+    let traverse fstChar listChars dict firstMovePlayed=
+        if firstMovePlayed then //Find ord ud fra et bogstav og ens hånd
+            let dictN = 
+                match Dictionary.step fstChar dict with
+                | Some (_ , dictN) -> dictN
+                | None -> failwith "no dict"
+            
+            match findWord listChars (dictN) "" with
+            | word when (Dictionary.lookup (sprintf "%c%s" fstChar  word) dict) -> (sprintf "%c%s" fstChar  word)
+            | word when not (Dictionary.lookup (sprintf "%c%s" fstChar  word) dict) -> ""
+            | _ -> ""
+        else //Find et ord ud fra ens hånd kun
+            match findWord listChars dict "" with
+            | word when (Dictionary.lookup word dict) -> 
+                word
+            | word when not (Dictionary.lookup word dict) -> 
+                ""
+            | _ -> ""
 
 module Scrabble =
     open System.Threading
@@ -111,80 +119,69 @@ module Scrabble =
 
         let (coordChar: list<(coord * char)>) = []
 
+        let evenOddCounter = 0
+        let isEven = evenOddCounter % 2 = 0
+
+        let mutable firstMoveHasBeenPlaced: bool = false
+        let CoordToLetter: Map<coord, char> = Map.empty
+
+
         let rec aux (st : State.state) =
             Print.printHand pieces (State.hand st)
 
-            // Goal: Make a first move from hand starting on coords 0,0. 
-            // Steps
-                // - Converting the multiset to a list, in order to access the items easilier with an index. 
-            let ourHand: MultiSet<uint32> = st.hand
-            let listOfMultiset = MultiSet.toList1 ourHand
-            //printfn "Vores hand består af disse (ID, ANTAL) \n %A" listOfMultiset
-            //[(0u, 1u); (4u, 1u); (5u, 1u); (8u, 1u); (15u, 1u); (18u, 1u); (20u, 1u)]
+            //Variables
+            //Coords
+            
 
-
-                // - Getting the corresponding letter (char) from the ID (uint32)
-                    //This one takes a tuple (ID, count) and converts the ID to a corresponding char, and returns a new tuple (char, count)
+            let listOfMultiset = MultiSet.toList1 st.hand
+ 
             let tempIntToCharFun ( ID:uint32 , count:uint32 ) : (char * uint32) = ( char (int 'A' + (int ID) - 1) , count )
                     
-                    //This one uses the function above on every element of the listOfMultiset, and returns a new list where ID's are now chars instead.
-            let listWithCharPointTuple = List.map tempIntToCharFun listOfMultiset
-            //printfn "Vores hand består af disse (CHAR, ANTAL) \n %A" listWithCharPointTuple
-
-
+                    
+            let listWithCharCountTuple = List.map tempIntToCharFun listOfMultiset
+    
                 // - Check the counts for possible duplicate letters and seperate them to individual items
                     // - ('A', 2) -> ('A', 1) ('A', 1)
             let expandWithDuplicate ( letter:char , count: uint32 ) =
                 match count with
                 | count when count = 1u -> [( letter , count )] //Do nothing to the tuple if there is no duplicate
                 | count                  -> List.replicate (int count) (letter , 1u)
-                //Replicate the tuple "count" times, where the count of a letter is now 1 
+               
 
                     //This one applies the expand function to all elements.
-            let charListWithDuplicates = 
-                List.collect expandWithDuplicate listWithCharPointTuple
-                
-            //printfn "Det her er den nye liste med ingen char dupes %A" charListWithDuplicates
-                
+            let charListWithDuplicates = List.collect expandWithDuplicate listWithCharCountTuple
+ 
                     //Make a list only consisting of chars
             let listOnlyChars = charListWithDuplicates |> List.map fst
-            //printfn "Liste kun med chars %A" listOnlyChars
+            
 
             let ListOfPossibleCombinations = Word.permute listOnlyChars
-            let unique = 
-                Set.ofList [for permutation: char list in ListOfPossibleCombinations -> 
-                            Word.traverse 'L' (permutation) (st.dict)]
-
-            let toList s = Set.fold (fun l se -> se::l) [] s
             
-            let finalWordList = List.filter (fun x -> x <> "") (toList unique)
+            let ListOfWordsWithEmpyLists = Set.ofList [for permutation: char list in ListOfPossibleCombinations -> Word.traverse 'L' (permutation) (st.dict) (firstMoveHasBeenPlaced)] |> Set.toList
 
-            let fi = 
-                if (toList unique).IsEmpty then
-                    "no words"
+            //let toList s = Set.fold (fun l se -> se::l) [] s
+            
+            
+            let finalWordList = List.filter (fun x -> x <> "") ListOfWordsWithEmpyLists
+
+
+            let wordToUse = 
+                if (finalWordList).IsEmpty then
+                    ""
                 else
-                    sprintf "There is %A elements: %A but we go with the first: %A\n" finalWordList.Length finalWordList finalWordList.Head
-
-            Print.printString fi 
-            
-            let wordToUse = finalWordList.Head
+                    finalWordList.Head
 
 
+            //Method to retrieve last played word, and the last character in that word
+            let lastUsedChar = List.last finalWordList |> Seq.toList |> List.last
 
-            // - Start gathering info to make a move. 
-            
-            //Coords
-            let evenOddCounter = 0
-            let isEven = evenOddCounter % 2 = 0
+
+
             
             
-            let mutable firstMoveHasBeenPlaced: bool = false
 
                     //Start coords
             let (FirstMoveCoord:ScrabbleUtil.coord) =  (0,0)
-
-
-            let CoordToLetter: Map<coord, char> = Map.empty
 
                 //Plus two coords together like a tuple (1,0) + (2,1) = (3,1)
             let addCoords (t1:coord) (t2:coord) = coord (fst t1 + fst t2 , snd t1 + snd t2 )
@@ -196,100 +193,109 @@ module Scrabble =
             //ON ODD 1 , 3 , 5 , 7 , 9
 
 
-
-            let rec MapCoordToLetter (CoordMap:Map<coord,char>) (StartCoord:coord) (charList:list<char>) = 
+            let rec MapCoordToLetter (coordMap:Map<coord,char>) (startCoord:coord) (charList:list<char>) = 
                 match charList with
-                | [] -> CoordMap
+                | [] -> coordMap
                 | firstLetter::remaining when firstMoveHasBeenPlaced=false -> 
                     let firstCoord = (coord (0,0))
-                    let updatedCoordMap = CoordMap |> Map.add firstCoord  firstLetter
+                    let updatedCoordMap = coordMap |> Map.add firstCoord  firstLetter
                     let nextCoord = addCoords firstCoord (coord (1 ,0))
                     firstMoveHasBeenPlaced <- true
                     MapCoordToLetter updatedCoordMap nextCoord remaining
 
                 | firstLetter::remaining when firstMoveHasBeenPlaced=true && isEven=false -> //ON ODD LEVEL
-                    let updatedCoordMap = CoordMap |> Map.add StartCoord firstLetter
-                    let nextCoord = addCoords StartCoord (coord (0 ,1))
+                    let updatedCoordMap = coordMap |> Map.add startCoord firstLetter
+                    let nextCoord = addCoords startCoord (coord (0 ,1))
                     MapCoordToLetter updatedCoordMap nextCoord remaining
 
 
                 | firstLetter::remaining when firstMoveHasBeenPlaced=true && isEven=true -> //ON EVEN LEVEL
-                    let updatedCoordMap = CoordMap |> Map.add StartCoord firstLetter
-                    let nextCoord = addCoords StartCoord (coord (1 ,0))
+                    let updatedCoordMap = coordMap |> Map.add startCoord firstLetter
+                    let nextCoord = addCoords startCoord (coord (1 ,0))
                     MapCoordToLetter updatedCoordMap nextCoord remaining
-
-
+                
+                | _ -> coordMap
 
             let WordToList = Seq.toList wordToUse
 
-
             let returnedMapOfCoords = MapCoordToLetter CoordToLetter FirstMoveCoord WordToList
 
-            //forcePrint (sprintf "%A\n" returnedMapOfCoords)
-
-            //Pieces = Map <  uint32 , Set<char * int> >
-
-            // HEJ
-            // 'H'::'E'::'J'
-            // 0,0 'H' 
-            // 1,0 'E'
-            // 2,0 'J'
-            // Vil have point til et bogstav:
-                // Vil matche med tryFind for at få fat i pieces' set som indeholder point som dens second value. 
-                    //Dette skal bruge et ID, for man skal matche med key, og pieces key er = ID af en brik
-                // Vil gerne have tilsvarende value i det set, givet en char //this has a method
-
-
-
-            let piecesValues = pieces.Values |> List.ofSeq
-
-            //PiecesValues Liste
-            //<('C', 3)>
-            //<('B', 4)> fst = B snd = 4
-
+            forcePrint (sprintf "Map of coords %A\n" returnedMapOfCoords)
             
-            //Somehow match each letter in our word with the "key" of our Set
-
+            let piecesValues = pieces.Values |> List.ofSeq
             let accumulatingList = List.Empty
 
-            let rec findCorrespondingPoint (ourWord:list<char>) (s:Set<char * int>) (l:list<char*int>)=
-                let t = s |> Set.toList |> List.head
+            let rec findCorrespondingPoint (ourWord:list<char>) (letter:Set<char * int>) (l:list<char*int>)=
+                let t = letter |> Set.toList |> List.head //Tuple af bogstav og point
                 match ourWord with
                     | [] -> l
                     | head::tail when (fst t) = head -> 
-                        let newList = l |> List.append [t]
+                        let newList = List.append l [t]
                         newList
                     | head::tail -> 
-                        findCorrespondingPoint tail s l
+                        findCorrespondingPoint tail letter l
 
             let getPointsForAllLetters (ourWord:list<char>) = List.filter (fun x -> x <> []) [for eachSet in piecesValues do findCorrespondingPoint ourWord eachSet accumulatingList]
 
-            let callthis = getPointsForAllLetters WordToList
-            forcePrint (sprintf "%A" callthis) 
 
-            //ny list hvor []::l
-            //let hel = getPointsForAllLetters
-            //forcePrint (sprintf "%A" hel)
-
-
-
-            //NEW VARIBLES FOR ALL THINGS NEEDED FOR MOVE
-
-
+            //Det her bytter om på rækkefølgen....
+            let PointsForLettersInWord = getPointsForAllLetters WordToList
+            forcePrint (sprintf "Points for letters: \n%A\n" PointsForLettersInWord) 
 
             
+            //DEN HER HAR EN BUG??? ignorere nogen gange duplicate letters og andre gange har den et ekstra bogstav tilføjet??
+            //map [((0, 0), 'A'); ((1, 0), 'D'); ((2, 0), 'O')]  - det her er hvordan det skal se ud
+            //CharPointTuples [('A', 0); ('A', 1); ('D', 2); ('O', 1)] - det her er hvordan den ser ud efter getCharPointTuple??
+            //ELLERS er det findCorrespondingPoint funktionen der er buggy? 
 
+            let rec getCharPointTuple (list:list<list<char * int>>) accumList= 
+                match list with 
+                | [] -> accumList
+                | head::tail -> 
+                    let newAccumList = List.append accumList [(head |> List.head)] 
+                    getCharPointTuple tail newAccumList
 
-            let extractPoints s = s |> Set.map snd |> Set.toList
+            let ListOfCharPointTuples = getCharPointTuple PointsForLettersInWord List.Empty
+            Print.printString (sprintf "CharPointTuples %A \n" ListOfCharPointTuples)
 
-            let AllPoints = piecesValues |> List.map extractPoints |> List.concat
-
-            //printfn "%A" AllPoints
             
+            let rec getIDToCharPointTuple (charPointList:list<char*int>) accumList=
+                match charPointList with
+                | [] -> accumList
+                | head::tail -> 
+                    let charToId = 
+                        if (snd head = 0) then //Hvis en brik giver 0 point, så er den eneste brik det kan være = wildcard, med id 0
+                            uint32 0
+                        else
+                            uint32 ((int (fst head)) - int 'A' + 1)
+
+                    let addIdToCharIntTuple = (charToId, head)
+                    let newAccumList = List.append accumList [addIdToCharIntTuple]
+                    getIDToCharPointTuple tail newAccumList
+            
+            let ListOfIDCharPointTuple = getIDToCharPointTuple ListOfCharPointTuples List.Empty
+            Print.printString (sprintf "ID added to char point %A \n" ListOfIDCharPointTuple)
+
+
+            let listOfCoordTuples = Map.toList returnedMapOfCoords
+            let rec getCoordToIdCharPointTuple (coordMap:list<coord * char>) (iDCharPointList:list<uint32 * (char * int)>) accumList = 
+                match coordMap, iDCharPointList with
+                | [], id -> accumList
+                | coord, [] -> accumList
+                | coordHead::coordTail , idHead::idTail -> 
+                    let addCoordToIdTuple = ((fst coordHead),idHead)
+                    let newAccumList = List.append accumList [addCoordToIdTuple]
+                    getCoordToIdCharPointTuple coordTail idTail newAccumList
+
+            let listOfCoordIdCharPointTuples = getCoordToIdCharPointTuple listOfCoordTuples ListOfIDCharPointTuple List.Empty
+
+            Print.printString (sprintf "\n Final string? \n %A " listOfCoordIdCharPointTuples )
+            
+
             //(<x-coordinate> <y-coordinate> <piece id><character><point-value> )
            
             //let move = RegEx.parseMove input
-
+            let move = listOfCoordIdCharPointTuples
 
             
 
@@ -324,10 +330,9 @@ module Scrabble =
                 { st with hand = updateHandWithNewTiles }
 
 
-            // END THE METHOD
 
             //Send "Move" variable to the stream 
-            //send cstream (SMPlay move)
+            send cstream (SMPlay move)
 
 
             //PRINTS
