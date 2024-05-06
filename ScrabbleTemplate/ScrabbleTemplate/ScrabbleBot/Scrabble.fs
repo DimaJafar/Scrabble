@@ -94,7 +94,7 @@ module Word =
         List.fold (fun accum x -> List.collect (inserts x) accum) [[]] list
 
     let traverse fstChar listChars dict firstMovePlayed=
-        if firstMovePlayed then //Find ord ud fra et bogstav og ens hånd
+        if firstMovePlayed=true then //Find ord ud fra et bogstav og ens hånd
             let dictN = 
                 match Dictionary.step fstChar dict with
                 | Some (_ , dictN) -> dictN
@@ -117,21 +117,30 @@ module Scrabble =
 
     let playGame cstream pieces (st : State.state) =
 
-        let (coordChar: list<(coord * char)>) = []
 
-        let evenOddCounter = 0
-        let isEven = evenOddCounter % 2 = 0
+        let mutable evenOddCounter = 0
+        let mutable isEven = evenOddCounter % 2 = 0
 
         let mutable firstMoveHasBeenPlaced: bool = false
-        let CoordToLetter: Map<coord, char> = Map.empty
+        
+        let mutable CoordToLetter: Map<coord, char> = Map.empty
+
+        let mutable lastUsedChar = 'A'
+        
+        let mutable lastUsedCoord = (coord (0,0))
+
+        let mutable accListOfListCharInt = List.Empty
+
+        let mutable listOfAllLastUsedCoordTuples = List.Empty
 
 
         let rec aux (st : State.state) =
+
             Print.printHand pieces (State.hand st)
 
-            //Variables
-            //Coords
             
+
+            let (FirstMoveCoord:ScrabbleUtil.coord) =  (0,0)
 
             let listOfMultiset = MultiSet.toList1 st.hand
  
@@ -154,16 +163,20 @@ module Scrabble =
                     //Make a list only consisting of chars
             let listOnlyChars = charListWithDuplicates |> List.map fst
             
+            Print.printString (sprintf "LIST ONLY CHARS? : %A" listOnlyChars)
 
             let ListOfPossibleCombinations = Word.permute listOnlyChars
             
-            let ListOfWordsWithEmpyLists = Set.ofList [for permutation: char list in ListOfPossibleCombinations -> Word.traverse 'L' (permutation) (st.dict) (firstMoveHasBeenPlaced)] |> Set.toList
+            let ListOfWordsWithEmpyLists = 
+                Print.printString (sprintf "\n MAKING A WORD STARTING WITH %A\n" lastUsedChar  )
+                Set.ofList [for permutation: char list in ListOfPossibleCombinations -> 
+                            Word.traverse lastUsedChar (permutation) (st.dict) (firstMoveHasBeenPlaced)] |> Set.toList
 
             //let toList s = Set.fold (fun l se -> se::l) [] s
             
             
             let finalWordList = List.filter (fun x -> x <> "") ListOfWordsWithEmpyLists
-
+            Print.printString (sprintf "\n All possible words: %A \n" finalWordList)
 
             let wordToUse = 
                 if (finalWordList).IsEmpty then
@@ -172,17 +185,23 @@ module Scrabble =
                     finalWordList.Head
 
 
-            //Method to retrieve last played word, and the last character in that word
-            let lastUsedChar = List.last finalWordList |> Seq.toList |> List.last
-
-
-
             
+            Print.printString wordToUse
+            let pru = Seq.toList wordToUse
+            Print.printString (sprintf "\n HERE IS LIST %A \n" pru)
+
+            let la = List.last pru
+            Print.printString (sprintf "\n HERE IS LAST OF LIST %A \n" la)
+
+
+
+            lastUsedChar <- wordToUse |> Seq.toList |> List.last
             
+            Print.printString (sprintf "\n HERE IS LAST USED CHAR?????? --- %A" lastUsedChar)
 
-                    //Start coords
-            let (FirstMoveCoord:ScrabbleUtil.coord) =  (0,0)
 
+
+        
                 //Plus two coords together like a tuple (1,0) + (2,1) = (3,1)
             let addCoords (t1:coord) (t2:coord) = coord (fst t1 + fst t2 , snd t1 + snd t2 )
 
@@ -196,74 +215,93 @@ module Scrabble =
             let rec MapCoordToLetter (coordMap:Map<coord,char>) (startCoord:coord) (charList:list<char>) = 
                 match charList with
                 | [] -> coordMap
-                | firstLetter::remaining when firstMoveHasBeenPlaced=false -> 
+                | firstLetter::remaining when (firstMoveHasBeenPlaced=false) -> 
+                    Print.printString (sprintf " \n FIRST MOVE? %A \n" firstMoveHasBeenPlaced  )
                     let firstCoord = (coord (0,0))
                     let updatedCoordMap = coordMap |> Map.add firstCoord  firstLetter
                     let nextCoord = addCoords firstCoord (coord (1 ,0))
-                    firstMoveHasBeenPlaced <- true
+                    firstMoveHasBeenPlaced <-true
                     MapCoordToLetter updatedCoordMap nextCoord remaining
 
                 | firstLetter::remaining when firstMoveHasBeenPlaced=true && isEven=false -> //ON ODD LEVEL
                     let updatedCoordMap = coordMap |> Map.add startCoord firstLetter
+                    Print.printString (sprintf "\n ODD LEVEL Here is a start coord: %A \n" startCoord)
                     let nextCoord = addCoords startCoord (coord (0 ,1))
+                    Print.printString (sprintf "\n ODD LEVEL Here is the next coord: %A \n" nextCoord)
+                    
                     MapCoordToLetter updatedCoordMap nextCoord remaining
-
 
                 | firstLetter::remaining when firstMoveHasBeenPlaced=true && isEven=true -> //ON EVEN LEVEL
                     let updatedCoordMap = coordMap |> Map.add startCoord firstLetter
+                    Print.printString (sprintf "\n EVEN LEVEL Here is a start coord: %A \n" startCoord)
+                    
                     let nextCoord = addCoords startCoord (coord (1 ,0))
+                    Print.printString (sprintf "\n EVEN LEVEL Here is the next coord: %A \n" nextCoord)
+
                     MapCoordToLetter updatedCoordMap nextCoord remaining
                 
                 | _ -> coordMap
-
+            
+            //WordToUse er en string, wordToList er list<char>
             let WordToList = Seq.toList wordToUse
 
-            let returnedMapOfCoords = MapCoordToLetter CoordToLetter FirstMoveCoord WordToList
+
+            Print.printString (sprintf "\n HERE IS COUNTER %A \n" evenOddCounter )
+
+            Print.printString (sprintf "\n HERE IS BOOL %A \n" isEven )
+               
+            let returnedMapOfCoords =
+                if firstMoveHasBeenPlaced=false then
+                    MapCoordToLetter CoordToLetter FirstMoveCoord WordToList
+                else
+                    Print.printString (sprintf " \n Use this lastUsedCoord %A \n" lastUsedCoord  )
+                    MapCoordToLetter CoordToLetter lastUsedCoord WordToList
+            
+
+
+            lastUsedCoord <-  fst (returnedMapOfCoords |> Map.toList |> List.last)
+
+            let tupleToSave = fst (returnedMapOfCoords |> Map.toList |> List.last)
+            listOfAllLastUsedCoordTuples <- List.append listOfAllLastUsedCoordTuples [tupleToSave]
+
+
+
 
             forcePrint (sprintf "Map of coords %A\n" returnedMapOfCoords)
             
+            
+
+            
+            
             let piecesValues = pieces.Values |> List.ofSeq
-            let accumulatingList = List.Empty
 
-            let rec findCorrespondingPoint (ourWord:list<char>) (letter:Set<char * int>) (l:list<char*int>)=
-                let t = letter |> Set.toList |> List.head //Tuple af bogstav og point
-                match ourWord with
-                    | [] -> l
-                    | head::tail when (fst t) = head -> 
-                        let newList = List.append l [t]
-                        newList
-                    | head::tail -> 
-                        findCorrespondingPoint tail letter l
+            //Want to put wildcard behind because its annoying.
+            Print.printString "Før"
+            let headOfPieces = piecesValues.Head
 
-            //Den her metode havde det problem at den matche vores bogstaver i alfabetisk rækkefølge, så vi går fra et ord "GAY" til "AGY" hvilket er et problem
-            let getPointsForAllLetters (ourWord:list<char>) = List.filter (fun x -> x <> []) [for eachSet in piecesValues do findCorrespondingPoint ourWord eachSet accumulatingList]
+            Print.printString "Mellem"
+            let newPiecesValues = List.append piecesValues.Tail [headOfPieces]
+
+            Print.printString (sprintf "New Pieces Values %A" newPiecesValues)
 
 
-            //Den her fikser problemet fordi den nu tager 1 af vores word letter af gangen, og matcher den med piecesvalues. Men nu matcher A med wildcard A. 
-            //
-            let rec findCorrespondingPoint1 (ourLetter:char) (allLetters:list< Set<char * int> >) (l:list<char*int>)=
+            let rec findCorrespondingPoint (ourLetter:char) (allLetters:list< Set<char * int> >) (l:list<char*int>)=
                 match allLetters with
                 | [] -> l
                 | head::tail when (head |> Set.toList |> List.head |> fst) = ourLetter  -> 
                     let newList = List.append l [head |> Set.toList |> List.head] //This is a tuple
                     newList
                 | head::tail -> 
-                    findCorrespondingPoint1 ourLetter tail l
+                    findCorrespondingPoint ourLetter tail l
 
+        
+            let getPointsForAllLetters (ourWord:list<char>) = List.filter (fun x -> x <> []) [for letter in ourWord do findCorrespondingPoint letter newPiecesValues accListOfListCharInt]
 
-            //This is in the right order, but it matches the wildcard first?? Even though we dont have a wildcard
-            let getPointsForAllLetters1 (ourWord:list<char>) = List.filter (fun x -> x <> []) [for letter in ourWord do findCorrespondingPoint1 letter piecesValues accumulatingList]
-
-            //Det her bytter om på rækkefølgen....
-            let PointsForLettersInWord = getPointsForAllLetters1 WordToList
+            let PointsForLettersInWord = getPointsForAllLetters WordToList
             forcePrint (sprintf "Points for letters: \n%A\n" PointsForLettersInWord) 
 
-            
-            //DEN HER HAR EN BUG??? ignorere nogen gange duplicate letters og andre gange har den et ekstra bogstav tilføjet??
-            //map [((0, 0), 'A'); ((1, 0), 'D'); ((2, 0), 'O')]  - det her er hvordan det skal se ud
-            //CharPointTuples [('A', 0); ('A', 1); ('D', 2); ('O', 1)] - det her er hvordan den ser ud efter getCharPointTuple??
-            //ELLERS er det findCorrespondingPoint funktionen der er buggy? 
 
+            
             let rec getCharPointTuple (list:list<list<char * int>>) accumList= 
                 match list with 
                 | [] -> accumList
@@ -280,10 +318,10 @@ module Scrabble =
                 | [] -> accumList
                 | head::tail -> 
                     let charToId = 
-                        if (snd head = 0) then //Hvis en brik giver 0 point, så er den eneste brik det kan være = wildcard, med id 0
+                        if (snd head = 0) then
                             uint32 0
                         else
-                            uint32 ((int (fst head)) - int 'A' + 1)
+                            uint32 ((int (fst head)) - int 'A' + 1) //Change 'char' to ID
 
                     let addIdToCharIntTuple = (charToId, head)
                     let newAccumList = List.append accumList [addIdToCharIntTuple]
@@ -311,9 +349,24 @@ module Scrabble =
             //(<x-coordinate> <y-coordinate> <piece id><character><point-value> )
            
             //let move = RegEx.parseMove input
-            //let move = listOfCoordIdCharPointTuples
+            let firstMoveTuple = List.head listOfCoordIdCharPointTuples
+            let firstMoveCoord = fst firstMoveTuple
+            Print.printString (sprintf "\n FIRST MOVE COORD \n %A " firstMoveCoord )
 
-            
+            let b = firstMoveCoord = lastUsedCoord
+
+            Print.printString (sprintf "\n LAST USED COORD \n %A " lastUsedCoord )
+            let toto = listOfCoordIdCharPointTuples |> List.tail
+
+            let move = 
+                if (List.contains firstMoveCoord listOfAllLastUsedCoordTuples) then //Dont play the first letter, as it is already on the board
+                    Print.printString (sprintf "\n Is firstCoord and lastusedcoord equal? \n %A " b)
+                    Print.printString (sprintf "\n TAIL IS:  \n %A "  toto )
+                    listOfCoordIdCharPointTuples |> List.tail
+                else 
+                    Print.printString (sprintf "\n NOT EQUAL \n %A " b)
+                    listOfCoordIdCharPointTuples
+        
 
             //RemoveTiles function, where we remove ms from hand 
             let removeTiles (hand: MultiSet<uint32>) (ms: (coord * (uint32 * (char * int))) list) =
@@ -348,7 +401,7 @@ module Scrabble =
 
 
             //Send "Move" variable to the stream 
-            //send cstream (SMPlay move)
+            send cstream (SMPlay move)
 
 
             //PRINTS
@@ -362,7 +415,11 @@ module Scrabble =
             | RCM (CMPlaySuccess(ms, points, newPieces)) ->
                 (* Successful play by you. Update your state (remove old tiles, add the new ones, change turn, etc) *)
                 let st' = updateState st ms newPieces// This state needs to be updated
+                firstMoveHasBeenPlaced <- true
+                evenOddCounter <- evenOddCounter + 1
+                isEven <- evenOddCounter % 2 = 0
                 aux st'
+
             | RCM (CMPlayed (pid, ms, points)) ->
                 (* Successful play by other player. Update your state *)
                 let st' = st // This state needs to be updated
