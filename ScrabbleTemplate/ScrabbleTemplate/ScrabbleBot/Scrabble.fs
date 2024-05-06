@@ -138,14 +138,22 @@ module Scrabble =
 
             Print.printHand pieces (State.hand st)
 
-            
-
             let (FirstMoveCoord:ScrabbleUtil.coord) =  (0,0)
 
             let listOfMultiset = MultiSet.toList1 st.hand
  
             let tempIntToCharFun ( ID:uint32 , count:uint32 ) : (char * uint32) = ( char (int 'A' + (int ID) - 1) , count )
                     
+            let expandWithDuplicate1 ( ID:uint32 , count: uint32 ) =
+                match count with
+                | count when count = 1u -> [( ID , count )] //Do nothing to the tuple if there is no duplicate
+                | count                  -> List.replicate (int count) (ID , 1u)
+
+            let listOfHand = List.collect expandWithDuplicate1 (MultiSet.toList1 st.hand)
+            
+            let getPiecesInHand =  List.map (fun x -> (fst x, Map.find (fst x) pieces)) listOfHand
+            
+            Print.printString (sprintf "%A" getPiecesInHand)
                     
             let listWithCharCountTuple = List.map tempIntToCharFun listOfMultiset
     
@@ -155,7 +163,6 @@ module Scrabble =
                 match count with
                 | count when count = 1u -> [( letter , count )] //Do nothing to the tuple if there is no duplicate
                 | count                  -> List.replicate (int count) (letter , 1u)
-               
 
                     //This one applies the expand function to all elements.
             let charListWithDuplicates = List.collect expandWithDuplicate listWithCharCountTuple
@@ -163,21 +170,15 @@ module Scrabble =
                     //Make a list only consisting of chars
             let listOnlyChars = charListWithDuplicates |> List.map fst
             
-            Print.printString (sprintf "LIST ONLY CHARS? : %A" listOnlyChars)
-
             let ListOfPossibleCombinations = Word.permute listOnlyChars
             
             let ListOfWordsWithEmpyLists = 
-                Print.printString (sprintf "\n MAKING A WORD STARTING WITH %A\n" lastUsedChar  )
                 Set.ofList [for permutation: char list in ListOfPossibleCombinations -> 
                             Word.traverse lastUsedChar (permutation) (st.dict) (firstMoveHasBeenPlaced)] |> Set.toList
 
-            //let toList s = Set.fold (fun l se -> se::l) [] s
-            
             
             let finalWordList = List.filter (fun x -> x <> "") ListOfWordsWithEmpyLists
-            Print.printString (sprintf "\n All possible words: %A \n" finalWordList)
-
+    
             let wordToUse = 
                 if (finalWordList).IsEmpty then
                     ""
@@ -185,38 +186,15 @@ module Scrabble =
                     finalWordList.Head
 
 
-            
-            Print.printString wordToUse
-            let pru = Seq.toList wordToUse
-            Print.printString (sprintf "\n HERE IS LIST %A \n" pru)
-
-            let la = List.last pru
-            Print.printString (sprintf "\n HERE IS LAST OF LIST %A \n" la)
-
-
-
             lastUsedChar <- wordToUse |> Seq.toList |> List.last
-            
-            Print.printString (sprintf "\n HERE IS LAST USED CHAR?????? --- %A" lastUsedChar)
 
-
-
-        
                 //Plus two coords together like a tuple (1,0) + (2,1) = (3,1)
             let addCoords (t1:coord) (t2:coord) = coord (fst t1 + fst t2 , snd t1 + snd t2 )
-
-
-            //ON EVEN 0 , 2 , 4 , 6 , 8
-                // + (1,0)
-
-            //ON ODD 1 , 3 , 5 , 7 , 9
-
 
             let rec MapCoordToLetter (coordMap:Map<coord,char>) (startCoord:coord) (charList:list<char>) = 
                 match charList with
                 | [] -> coordMap
                 | firstLetter::remaining when (firstMoveHasBeenPlaced=false) -> 
-                    Print.printString (sprintf " \n FIRST MOVE? %A \n" firstMoveHasBeenPlaced  )
                     let firstCoord = (coord (0,0))
                     let updatedCoordMap = coordMap |> Map.add firstCoord  firstLetter
                     let nextCoord = addCoords firstCoord (coord (1 ,0))
@@ -225,38 +203,24 @@ module Scrabble =
 
                 | firstLetter::remaining when firstMoveHasBeenPlaced=true && isEven=false -> //ON ODD LEVEL
                     let updatedCoordMap = coordMap |> Map.add startCoord firstLetter
-                    Print.printString (sprintf "\n ODD LEVEL Here is a start coord: %A \n" startCoord)
                     let nextCoord = addCoords startCoord (coord (0 ,1))
-                    Print.printString (sprintf "\n ODD LEVEL Here is the next coord: %A \n" nextCoord)
-                    
                     MapCoordToLetter updatedCoordMap nextCoord remaining
 
                 | firstLetter::remaining when firstMoveHasBeenPlaced=true && isEven=true -> //ON EVEN LEVEL
                     let updatedCoordMap = coordMap |> Map.add startCoord firstLetter
-                    Print.printString (sprintf "\n EVEN LEVEL Here is a start coord: %A \n" startCoord)
-                    
                     let nextCoord = addCoords startCoord (coord (1 ,0))
-                    Print.printString (sprintf "\n EVEN LEVEL Here is the next coord: %A \n" nextCoord)
-
                     MapCoordToLetter updatedCoordMap nextCoord remaining
                 
                 | _ -> coordMap
             
-            //WordToUse er en string, wordToList er list<char>
+
             let WordToList = Seq.toList wordToUse
-
-
-            Print.printString (sprintf "\n HERE IS COUNTER %A \n" evenOddCounter )
-
-            Print.printString (sprintf "\n HERE IS BOOL %A \n" isEven )
                
             let returnedMapOfCoords =
                 if firstMoveHasBeenPlaced=false then
                     MapCoordToLetter CoordToLetter FirstMoveCoord WordToList
                 else
-                    Print.printString (sprintf " \n Use this lastUsedCoord %A \n" lastUsedCoord  )
                     MapCoordToLetter CoordToLetter lastUsedCoord WordToList
-            
 
 
             lastUsedCoord <-  fst (returnedMapOfCoords |> Map.toList |> List.last)
@@ -264,25 +228,16 @@ module Scrabble =
             let tupleToSave = fst (returnedMapOfCoords |> Map.toList |> List.last)
             listOfAllLastUsedCoordTuples <- List.append listOfAllLastUsedCoordTuples [tupleToSave]
 
-
-
-
-            forcePrint (sprintf "Map of coords %A\n" returnedMapOfCoords)
-            
-            
-
             
             
             let piecesValues = pieces.Values |> List.ofSeq
 
-            //Want to put wildcard behind because its annoying.
-            Print.printString "Før"
+            
+
             let headOfPieces = piecesValues.Head
 
-            Print.printString "Mellem"
-            let newPiecesValues = List.append piecesValues.Tail [headOfPieces]
 
-            Print.printString (sprintf "New Pieces Values %A" newPiecesValues)
+            let newPiecesValues = List.append piecesValues.Tail [headOfPieces]
 
 
             let rec findCorrespondingPoint (ourLetter:char) (allLetters:list< Set<char * int> >) (l:list<char*int>)=
@@ -298,7 +253,7 @@ module Scrabble =
             let getPointsForAllLetters (ourWord:list<char>) = List.filter (fun x -> x <> []) [for letter in ourWord do findCorrespondingPoint letter newPiecesValues accListOfListCharInt]
 
             let PointsForLettersInWord = getPointsForAllLetters WordToList
-            forcePrint (sprintf "Points for letters: \n%A\n" PointsForLettersInWord) 
+
 
 
             
@@ -310,7 +265,7 @@ module Scrabble =
                     getCharPointTuple tail newAccumList
 
             let ListOfCharPointTuples = getCharPointTuple PointsForLettersInWord List.Empty
-            Print.printString (sprintf "CharPointTuples %A \n" ListOfCharPointTuples)
+            
 
             
             let rec getIDToCharPointTuple (charPointList:list<char*int>) accumList=
@@ -328,7 +283,6 @@ module Scrabble =
                     getIDToCharPointTuple tail newAccumList
             
             let ListOfIDCharPointTuple = getIDToCharPointTuple ListOfCharPointTuples List.Empty
-            Print.printString (sprintf "ID added to char point %A \n" ListOfIDCharPointTuple)
 
 
             let listOfCoordTuples = Map.toList returnedMapOfCoords
@@ -343,32 +297,18 @@ module Scrabble =
 
             let listOfCoordIdCharPointTuples = getCoordToIdCharPointTuple listOfCoordTuples ListOfIDCharPointTuple List.Empty
 
-            Print.printString (sprintf "\n Final string? \n %A " listOfCoordIdCharPointTuples )
-            
-
-            //(<x-coordinate> <y-coordinate> <piece id><character><point-value> )
-           
-            //let move = RegEx.parseMove input
             let firstMoveTuple = List.head listOfCoordIdCharPointTuples
             let firstMoveCoord = fst firstMoveTuple
-            Print.printString (sprintf "\n FIRST MOVE COORD \n %A " firstMoveCoord )
 
-            let b = firstMoveCoord = lastUsedCoord
-
-            Print.printString (sprintf "\n LAST USED COORD \n %A " lastUsedCoord )
-            let toto = listOfCoordIdCharPointTuples |> List.tail
+            
 
             let move = 
                 if (List.contains firstMoveCoord listOfAllLastUsedCoordTuples) then //Dont play the first letter, as it is already on the board
-                    Print.printString (sprintf "\n Is firstCoord and lastusedcoord equal? \n %A " b)
-                    Print.printString (sprintf "\n TAIL IS:  \n %A "  toto )
                     listOfCoordIdCharPointTuples |> List.tail
                 else 
-                    Print.printString (sprintf "\n NOT EQUAL \n %A " b)
                     listOfCoordIdCharPointTuples
         
 
-            //RemoveTiles function, where we remove ms from hand 
             let removeTiles (hand: MultiSet<uint32>) (ms: (coord * (uint32 * (char * int))) list) =
                let rec removeTile  (tiles: (coord * (uint32 * (char * int))) list) (hand: MultiSet<uint32>)= 
                  match tiles with 
@@ -378,7 +318,6 @@ module Scrabble =
                  removeTile tail updatedhand 
                removeTile ms hand 
 
-            //AddTiles function, where we add newPieces to hand
             let addTiles (hand: MultiSet<uint32>) (newPieces: (uint32 * uint32) list) =
               let rec addTile (piece: (uint32 * uint32) list) (hand: MultiSet<uint32>) = 
                  match piece with 
@@ -388,19 +327,12 @@ module Scrabble =
                  addTile tail updatedHand  
               addTile newPieces hand   
  
-
-                // List.fold (fun updatedHand (tileId, _)  -> addSingle tileId updatedHand ) hand newPieces
-           
-
-            //UpdateSate function, where we combine the two functions and the result is what we update st with hand with
             let updateState (st: State.state) (ms: (coord * (uint32 * (char * int))) list) (newPieces: (uint32 * uint32) list) =
                 let removeTilesFromHand = removeTiles st.hand ms
                 let updateHandWithNewTiles = addTiles removeTilesFromHand newPieces
                 { st with hand = updateHandWithNewTiles }
 
-
-
-            //Send "Move" variable to the stream 
+            
             send cstream (SMPlay move)
 
 
@@ -408,13 +340,14 @@ module Scrabble =
             //debugPrint (sprintf "Player %d -> Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
             //debugPrint (sprintf "Player %d <- Server:\n%A\n" (State.playerNumber st) move) // keep the debug lines. They are useful.
 
-            //Receive the message 
-            //Now we use the UpdateState function and use st, ms and newPieces
+   
             let msg = recv cstream
             match msg with
             | RCM (CMPlaySuccess(ms, points, newPieces)) ->
                 (* Successful play by you. Update your state (remove old tiles, add the new ones, change turn, etc) *)
+                
                 let st' = updateState st ms newPieces// This state needs to be updated
+                
                 firstMoveHasBeenPlaced <- true
                 evenOddCounter <- evenOddCounter + 1
                 isEven <- evenOddCounter % 2 = 0
