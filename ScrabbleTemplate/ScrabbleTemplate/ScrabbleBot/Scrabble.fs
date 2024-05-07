@@ -197,6 +197,48 @@ module Scrabble =
         let possibleWords: list<string> = Set.ofList [for permutation: list<char> in possibilitesFlattened -> Word.traverse '-' (permutation) (dict) (false)] |> Set.toList
         List.filter (fun x -> x <> "") possibleWords
 
+
+
+    let findWildCardMatch (listTuple:list<char*int>) (letter:char) : (char * int)= 
+            let listofmatch = List.filter (fun pair -> fst pair = letter) listTuple
+            List.head listofmatch
+                
+
+    let rec findCorrespondingPoint (ourWord: string) (lettersInHand: list<uint32 * uint32 * Set<char*int>>) (accList: list<uint32 * uint32 * Set<char*int>>): list<uint32 * uint32 * Set<char*int>> =
+        match ourWord with
+        | "" -> accList
+        | _  -> 
+            let ourLetter   : char   = ourWord.[0]
+            let restOurWord : string = ourWord.Substring(1)
+            match List.rev lettersInHand with
+            | [] ->
+                Print.printString (sprintf "[2.findCorrespondingPoint []] = %A\n" accList)
+                accList
+
+            | (id, occ, set)::tail when id <> 0u && (set |> Set.toList |> List.head |> fst) = ourLetter  ->
+                let newAccList: list<uint32 * uint32 * Set<char*int>> =
+                    match occ with
+                    | 1u -> List.append accList [(id, occ,    set)]
+                    | _  -> List.append accList [(id, occ-1u, set)]
+                
+                let newHand: list<uint32 * uint32 * Set<char*int>> =
+                    match occ with
+                    | 1u -> tail
+                    | _  -> List.append tail [(id, occ-1u, set)]
+
+                findCorrespondingPoint (restOurWord) (List.rev newHand) (newAccList)
+            
+            | (id, occ, set)::tail when id  = 0u && (fst (findWildCardMatch (Set.toList set) ourLetter) = ourLetter) ->
+                let matched : char * int                               =  findWildCardMatch (Set.toList set) ourLetter
+                let newSet  : Set<char * int>                          = Set.singleton matched
+                let newList : (uint32 * uint32 * Set<char * int>) list = List.append accList [(id, occ, newSet)]
+                findCorrespondingPoint (restOurWord) (List.rev tail) (newList)
+            
+            | head::tail ->
+                // Put the word back behind
+                let newHand: (uint32 * uint32 * Set<char * int>) list = List.append tail [head]
+                findCorrespondingPoint ourWord (List.rev newHand) accList
+
     /// Run the game
     /// * cstream : idk
     /// * pieces  : constant data transcoding IDs to set of corresponding characters
@@ -213,6 +255,14 @@ module Scrabble =
             // 2. Find words -- depending on my hand: <ids:uint32 * occurence:uint32 * Set<char*int> -> list<string>
             let words: list<string> = findWords idsOccurenceSets st.dict
             Print.printString (sprintf "[2.FIND-WORDS] (%A) %A\n" words.Length words)
+
+            let firstWord = words |> List.last //First word in list
+
+            let charListWord = Seq.toList firstWord
+
+            let handMatched = findCorrespondingPoint firstWord idsOccurenceSets []  
+            Print.printString (sprintf "[2.FIND-WORDS] (CORRESPONDING '%A') %A\n" firstWord handMatched)
+            
             
             // 3. Which words can be put ? -- depending on the board
             // : (list<string>, board, optional:latest) -> list<string>
