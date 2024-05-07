@@ -74,6 +74,7 @@ module Word =
                 newWord
             | Some (false, newDict) ->
                 findWord (x::tail) newDict newWord
+
             | None ->
                 newWord
         | head::tail ->
@@ -85,6 +86,21 @@ module Word =
                 newWord
             | None ->
                 newWord
+    let rec findWord1 (listOfChars: (uint32 * Set<char * int>) list ) dict (word:string) (accumList: (string * (uint32 * Set<char * int>)) list) : (string * (uint32 * Set<char * int>)) list = 
+        
+        match listOfChars with
+        | [] -> accumList
+        | head::tail ->
+            let getLetter = snd head |> Set.toList |> List.head |> fst
+            let mutable newWord = word + getLetter.ToString()
+            match Dictionary.step getLetter dict with
+            | Some (true, newDict) ->
+                accumList
+            | Some (false, newDict) ->
+                let newAccumList = List.append accumList [(newWord,head)]
+                findWord1 tail newDict newWord newAccumList
+            | None ->
+                accumList
 
     let permute list =
         let rec inserts e = function
@@ -92,6 +108,8 @@ module Word =
             | x::xs as list -> (e::list)::(inserts e xs |> List.map (fun xs' -> x::xs'))
 
         List.fold (fun accum x -> List.collect (inserts x) accum) [[]] list
+
+    
 
     let traverse fstChar listChars dict firstMovePlayed=
         if firstMovePlayed=true then //Find ord ud fra et bogstav og ens hånd
@@ -111,6 +129,45 @@ module Word =
             | word when not (Dictionary.lookup word dict) -> 
                 ""
             | _ -> ""
+
+
+    let lo = List.Empty
+
+    let helper (word: list<string * (uint32 * Set<char * int>)>) = 
+        match List.rev word with
+        | [] -> ""
+        | (lastString, _)::_ -> lastString 
+
+    let traverse1 fstChar (listOfChars: (uint32 * Set<char * int>) list ) dict firstMovePlayed accumList=
+        if firstMovePlayed=true then //Find ord ud fra et bogstav og ens hånd
+            let dictN = 
+                match Dictionary.step fstChar dict with
+                | Some (_ , dictN) -> dictN
+                | None -> failwith "no dict"
+            
+            match findWord1 listOfChars (dictN) "" accumList with
+            | word when (Dictionary.lookup (sprintf "%c%s" fstChar  (helper word)) dict) -> 
+                Print.printString "FIND ORD HER"
+
+                (sprintf "%c%s" fstChar  (helper word))
+            | word when not (Dictionary.lookup (sprintf "%c%s" fstChar  (helper word)) dict) -> ""
+            | _ -> ""
+        else //Find et ord ud fra ens hånd kun
+            match findWord1 listOfChars dict "" accumList with
+            | word when (Dictionary.lookup (helper word) dict) -> 
+                (helper word)
+            | word when not (Dictionary.lookup (helper word) dict) -> 
+                ""
+            | _ -> ""
+
+    let rec findLettersUsed letter hand accList =
+                match hand with
+                | [] -> failwithf "Character '%c' not found in piecesInHand" letter
+                | (id, set)::rest when set |> Set.toList |> List.head |> fst = letter ->
+                    let newList = List.append accList [(id,set)]
+                    newList
+                | (id, set)::rest ->
+                    findLettersUsed letter rest accList
 
 module Scrabble =
     open System.Threading
@@ -151,34 +208,50 @@ module Scrabble =
 
             let listOfHand = List.collect expandWithDuplicate1 (MultiSet.toList1 st.hand)
             
-            let getPiecesInHand =  List.map (fun x -> (fst x, Map.find (fst x) pieces)) listOfHand
+            let getPiecesInHand: (uint32 * Set<char * int>) list =  List.map (fun x -> (fst x, Map.find (fst x) pieces)) listOfHand
             
-            Print.printString (sprintf "%A" getPiecesInHand)
+            
+            Print.printString (sprintf "\nPieces: %A\n" getPiecesInHand)
+
+  
                     
             let listWithCharCountTuple = List.map tempIntToCharFun listOfMultiset
     
-                // - Check the counts for possible duplicate letters and seperate them to individual items
-                    // - ('A', 2) -> ('A', 1) ('A', 1)
+        
             let expandWithDuplicate ( letter:char , count: uint32 ) =
                 match count with
                 | count when count = 1u -> [( letter , count )] //Do nothing to the tuple if there is no duplicate
                 | count                  -> List.replicate (int count) (letter , 1u)
 
-                    //This one applies the expand function to all elements.
+    
             let charListWithDuplicates = List.collect expandWithDuplicate listWithCharCountTuple
  
                     //Make a list only consisting of chars
             let listOnlyChars = charListWithDuplicates |> List.map fst
             
             let ListOfPossibleCombinations = Word.permute listOnlyChars
+
+
+            let ListOfPossibleCombinations1 = Word.permute getPiecesInHand
             
             let ListOfWordsWithEmpyLists = 
                 Set.ofList [for permutation: char list in ListOfPossibleCombinations -> 
                             Word.traverse lastUsedChar (permutation) (st.dict) (firstMoveHasBeenPlaced)] |> Set.toList
 
+
+    
+
+            let ListOfWordsWithEmpyLists1 = 
+                Set.ofList [for permutation in ListOfPossibleCombinations1 -> 
+                            Word.traverse1 lastUsedChar (permutation) (st.dict) (firstMoveHasBeenPlaced) []] |> Set.toList
+
+
             
             let finalWordList = List.filter (fun x -> x <> "") ListOfWordsWithEmpyLists
+
+
     
+
             let wordToUse = 
                 if (finalWordList).IsEmpty then
                     ""
@@ -186,7 +259,17 @@ module Scrabble =
                     finalWordList.Head
 
 
+
             lastUsedChar <- wordToUse |> Seq.toList |> List.last
+
+
+
+    
+
+            
+
+            let resultofLetters (ourWord:list<char>) = [for letter in ourWord do Word.findLettersUsed letter getPiecesInHand []]
+                    
 
                 //Plus two coords together like a tuple (1,0) + (2,1) = (3,1)
             let addCoords (t1:coord) (t2:coord) = coord (fst t1 + fst t2 , snd t1 + snd t2 )
@@ -254,7 +337,9 @@ module Scrabble =
 
             let PointsForLettersInWord = getPointsForAllLetters WordToList
 
+            let PointsForLettersInWord1 = resultofLetters WordToList
 
+            Print.printString (sprintf "\n LETTERS TO WORD %A" PointsForLettersInWord1)
 
             
             let rec getCharPointTuple (list:list<list<char * int>>) accumList= 

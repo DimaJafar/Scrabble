@@ -10,7 +10,7 @@ open System.Reflection
 [<assembly: System.Reflection.AssemblyCompanyAttribute("ScrabbleTemplate")>]
 [<assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")>]
 [<assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")>]
-[<assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6aa36a6d2010d89c7fa740dcc127f907a7a1350a")>]
+[<assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d05948f9d8d72abc4fba8b1c1eb07fe47f720486")>]
 [<assembly: System.Reflection.AssemblyProductAttribute("ScrabbleTemplate")>]
 [<assembly: System.Reflection.AssemblyTitleAttribute("ScrabbleTemplate")>]
 [<assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")>]
