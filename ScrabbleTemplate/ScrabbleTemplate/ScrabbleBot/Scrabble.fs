@@ -184,26 +184,18 @@ module Scrabble =
                     buildPossibilities (tail) (newAcc)
 
         // 1. Get a list<list<char>> -> possibilities taking wildcard into account
-        let handFlattened: list<uint32 * uint32 * Set<char*int>> = List.collect expandWithDuplicate hand
-        Print.printString (sprintf "[2.FIND-WORDS][listOfHand] %A\n" handFlattened)
+        let handFlattened : list<uint32 * uint32 * Set<char*int>> = List.collect expandWithDuplicate hand
+        let possibilites  : list<list<char>>                      = buildPossibilities handFlattened [[]]
         
-        let possibilites: list<list<char>> = buildPossibilities handFlattened [[]]
-        Print.printString (sprintf "[2.FIND-WORDS][buildPossibilities] %A\n" possibilites)
-            //List.map (fun (id, occ, s: Set<char * int>) -> (s |> Set.toList |> (fun x -> fst ) )) handFlattened
-
-
-        
-        // 2. Build permutations
         // 2. | a. Generate permutation for each list in the list<char> -> it create a list<list<list<char>>>
-        // 2. | b. Flatten the list<list<list<char>>> into a list<list<char>> 
+        let permutationsPossibilities: list<list<list<char>>>     = List.map (fun x -> Word.permute x) possibilites
+        
+        // 2. | b. Flatten the list<list<list<char>>> into a list<list<char>>
+        let possibilitesFlattened: list<list<char>>             = List.concat permutationsPossibilities
+        
         // 3. Traverse and filter to return the final list<string>
-
-        // N. Working code
-        let startingChar : char             = 'A'
-        let listChar     : list<char>       = 'A'::'P'::'H'::'N'::'A'::[]
-        let permutations : list<list<char>> = Word.permute listChar
-        let final        : list<string>     = Set.ofList [for permutation: char list in permutations -> Word.traverse 'A' (permutation) (dict) (true)] |> Set.toList
-        List.filter (fun x -> x <> "") final
+        let possibleWords: list<string> = Set.ofList [for permutation: list<char> in possibilitesFlattened -> Word.traverse '-' (permutation) (dict) (false)] |> Set.toList
+        List.filter (fun x -> x <> "") possibleWords
 
     /// Run the game
     /// * cstream : idk
@@ -213,14 +205,14 @@ module Scrabble =
 
         let rec aux (st : State.state) =
             Print.printHand pieces (st.hand)
-            
+
             // 1. Preprocessing: _ -> <ids:uint32 * occurence:uint32 * Set<char*int>
             let idsOccurenceSets: list<uint32 * uint32 * 'a> = preprocessHand st.hand pieces
             Print.printString (sprintf "[1.PREPROCESS] %A\n" idsOccurenceSets)
             
             // 2. Find words -- depending on my hand: <ids:uint32 * occurence:uint32 * Set<char*int> -> list<string>
             let words: list<string> = findWords idsOccurenceSets st.dict
-            Print.printString (sprintf "[2.FIND-WORDS] %A\n" [])
+            Print.printString (sprintf "[2.FIND-WORDS] (%A) %A\n" words.Length words)
             
             // 3. Which words can be put ? -- depending on the board
             // : (list<string>, board, optional:latest) -> list<string>
