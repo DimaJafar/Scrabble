@@ -53,14 +53,46 @@ module State =
         dict          : ScrabbleUtil.Dictionary.Dict
         playerNumber  : uint32
         hand          : MultiSet.MultiSet<uint32>
+        moves : list<coord * (uint32 * (char * int))>
     }
 
-    let mkState b d pn h = {board = b; dict = d;  playerNumber = pn; hand = h }
+    let mkState b d pn h pm = {board = b; dict = d;  playerNumber = pn; hand = h; moves = pm}
     
     let board st         = st.board
     let dict st          = st.dict
     let playerNumber st  = st.playerNumber
     let hand st          = st.hand
+
+    let moves st         = st.moves
+
+
+
+    let removeTiles (hand: MultiSet<uint32>) (ms: (coord * (uint32 * (char * int))) list) =
+               let rec removeTile  (tiles: (coord * (uint32 * (char * int))) list) (hand: MultiSet<uint32>)= 
+                 match tiles with 
+                 |[] -> hand 
+                 |(_, (tileId, (_))) :: tail -> 
+                 let updatedhand = removeSingle tileId hand
+                 removeTile tail updatedhand 
+               removeTile ms hand 
+
+    let addTiles (hand: MultiSet<uint32>) (newPieces: (uint32 * uint32) list) =
+        let rec addTile (piece: (uint32 * uint32) list) (hand: MultiSet<uint32>) = 
+            match piece with 
+            | [] -> hand 
+            | (tileId, count)  :: tail -> 
+            let updatedHand = addSingle tileId hand
+            addTile tail updatedHand  
+        addTile newPieces hand   
+
+    let updateState (st: state) (ms: (coord * (uint32 * (char * int))) list) (newPieces: (uint32 * uint32) list) =
+        let removeTilesFromHand = removeTiles st.hand ms
+        let updateHandWithNewTiles = addTiles removeTilesFromHand newPieces
+        let addUsedMoves = List.append st.moves ms
+        { st with 
+            hand = updateHandWithNewTiles 
+            moves = addUsedMoves
+        }
 
 
 module Word =
@@ -121,7 +153,7 @@ module Scrabble =
         match msg with
         | RCM (CMPlaySuccess(ms, points, newPieces)) ->
             (* Successful play by you. Update your state (remove old tiles, add the new ones, change turn, etc) *)
-            let st' = st
+            let st' =  State.updateState st ms newPieces
             auxFun st'
 
         | RCM (CMPlayed (pid, ms, points)) ->
@@ -277,6 +309,7 @@ module Scrabble =
             let move: list<coord * (uint32 * (char * int))> = finalMoveList
             
             // N. Send "Move" variable to the stream
+            Print.printString (sprintf "[N.MOVES %A\n" st.moves)
             send cstream (SMPlay move)
            
             let msg: Response = recv cstream
@@ -309,6 +342,7 @@ module Scrabble =
                   
         let handSet = List.fold (fun acc (x, k) -> MultiSet.add x k acc) MultiSet.empty hand
         
+        let playedMoves: list<coord * (uint32 * (char * int))> = []
 
-        fun () -> playGame cstream tiles (State.mkState board dict playerNumber handSet)
+        fun () -> playGame cstream tiles (State.mkState board dict playerNumber handSet playedMoves)
         
