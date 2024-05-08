@@ -35,7 +35,7 @@ module RegEx =
                 | _ -> failwith "Failed (should never happen)") |>
         Seq.toList
 
- module Print =
+module Print =
     let printString str = forcePrint str
 
     let printHand pieces hand =
@@ -197,14 +197,8 @@ module Scrabble =
         let possibleWords: list<string> = Set.ofList [for permutation: list<char> in possibilitesFlattened -> Word.traverse '-' (permutation) (dict) (false)] |> Set.toList
         List.filter (fun x -> x <> "") possibleWords
 
-
-
-    let findWildCardMatch (listTuple:list<char*int>) (letter:char) : (char * int)= 
-            let listofmatch = List.filter (fun pair -> fst pair = letter) listTuple
-            List.head listofmatch
-                
-
     let rec findCorrespondingPoint (ourWord: string) (lettersInHand: list<uint32 * uint32 * Set<char*int>>) (accList: list<uint32 * uint32 * Set<char*int>>): list<uint32 * uint32 * Set<char*int>> =
+        let findWildCardMatch (listTuple:list<char*int>) (letter:char) : (char * int) = List.filter (fun pair -> fst pair = letter) listTuple |> List.head
         match ourWord with
         | "" -> accList
         | _  -> 
@@ -212,7 +206,6 @@ module Scrabble =
             let restOurWord : string = ourWord.Substring(1)
             match List.rev lettersInHand with
             | [] ->
-                Print.printString (sprintf "[2.findCorrespondingPoint []] = %A\n" accList)
                 accList
 
             | (id, occ, set)::tail when id <> 0u && (set |> Set.toList |> List.head |> fst) = ourLetter  ->
@@ -253,19 +246,22 @@ module Scrabble =
             Print.printString (sprintf "[1.PREPROCESS] %A\n" idsOccurenceSets)
             
             // 2. Find words -- depending on my hand: <ids:uint32 * occurence:uint32 * Set<char*int> -> list<string>
-            let words: list<string> = findWords idsOccurenceSets st.dict
+            let words       : list<string>               = findWords idsOccurenceSets st.dict
+            let firstWord   : string                     = words |> List.head //First word in list
+            let handMatched : list<uint32 * uint32 * Set<char * int>> = findCorrespondingPoint firstWord idsOccurenceSets []
             Print.printString (sprintf "[2.FIND-WORDS] (%A) %A\n" words.Length words)
-
-            let firstWord = words |> List.last //First word in list
-
-            let charListWord = Seq.toList firstWord
-
-            let handMatched = findCorrespondingPoint firstWord idsOccurenceSets []  
             Print.printString (sprintf "[2.FIND-WORDS] (CORRESPONDING '%A') %A\n" firstWord handMatched)
-            
             
             // 3. Which words can be put ? -- depending on the board
             // : (list<string>, board, optional:latest) -> list<string>
+            let handMatchCoords: list<uint32 * (char * int)> = List.map (fun (id, occ, set) -> (id, (set |> Set.minElement)) ) handMatched
+            Print.printString (sprintf "[3.handMatchCoords %A\n" handMatchCoords)
+            let handSeq = {0..handMatchCoords.Length-1} |> Seq.toList
+            Print.printString (sprintf "[3.handMatchCoords %A\n" handSeq)
+            let handCoords    : list<coord> = List.map (fun x -> coord (x, 0)) handSeq
+            let finalMoveList : list<coord * (uint32 * (char * int))> = List.zip handCoords handMatchCoords
+            Print.printString (sprintf "[3.finalMoveList %A\n" finalMoveList)
+
             
             // 4. Decide where to put the words (starting coord of the word + direction exemple:up=(0,1)) -- depending on the board
             // : list<string> -> list<coord * coord>
@@ -278,7 +274,7 @@ module Scrabble =
             /// * uint32 : ID of a tile (represents a character or wildcard)
             /// * char   : chosen character (id=0 -> could be 'a')
             /// * int    : points for the character
-            let move: list<coord * (uint32 * (char * int))> = []
+            let move: list<coord * (uint32 * (char * int))> = finalMoveList
             
             // N. Send "Move" variable to the stream
             send cstream (SMPlay move)
@@ -312,6 +308,7 @@ module Scrabble =
         //let board = ScrabbleLib.simpleBoardLangParser.parseSimpleBoardProg boardP
                   
         let handSet = List.fold (fun acc (x, k) -> MultiSet.add x k acc) MultiSet.empty hand
+        
 
         fun () -> playGame cstream tiles (State.mkState board dict playerNumber handSet)
         
