@@ -94,7 +94,6 @@ module State =
             moves = addUsedMoves
         }
 
-
 module Word =
     let rec findWord (listOfChars: list<char>) dict (word:string) = 
         match listOfChars with
@@ -125,8 +124,16 @@ module Word =
 
         List.fold (fun accum x -> List.collect (inserts x) accum) [[]] list
 
-    let traverse (fstChar: char) (listChars: list<char>) (dict: Dictionary.Dict) (firstMovePlayed: bool) =
-        if firstMovePlayed=true then //Find ord ud fra et bogstav og ens hånd
+    let traverse (st: State.state) (fstChar: char) (listChars: list<char>) (dict: Dictionary.Dict) =
+        if st.moves.IsEmpty then //Find ord fra ens hånd kun, fordi der ikke er blevet spillet før
+            match findWord listChars dict "" with
+            | word when (Dictionary.lookup word dict) -> 
+                word
+            | word when not (Dictionary.lookup word dict) -> 
+                ""
+            | _ -> ""
+        else //Find et ord ud fra sidste bogstav spillet. 
+            //Print.printString (sprintf "[2. MAKING WORD FROM] (%A)\n" fstChar)
             let dictN = 
                 match Dictionary.step fstChar dict with
                 | Some (_ , dictN) -> dictN
@@ -135,13 +142,6 @@ module Word =
             match findWord listChars (dictN) "" with
             | word when (Dictionary.lookup (sprintf "%c%s" fstChar  word) dict) -> (sprintf "%c%s" fstChar  word)
             | word when not (Dictionary.lookup (sprintf "%c%s" fstChar  word) dict) -> ""
-            | _ -> ""
-        else //Find et ord ud fra ens hånd kun
-            match findWord listChars dict "" with
-            | word when (Dictionary.lookup word dict) -> 
-                word
-            | word when not (Dictionary.lookup word dict) -> 
-                ""
             | _ -> ""
 
 module Scrabble =
@@ -177,7 +177,7 @@ module Scrabble =
 
     /// TODO Find possible words from a hand and returns them as a list of string.
     /// hand : list of ids/occurences/chars
-    let findWords (hand: list<uint32 * uint32 * Set<char*int>>) (dict: Dictionary.Dict): list<string> = 
+    let findWords (st: State.state) (hand: list<uint32 * uint32 * Set<char*int>>) (dict: Dictionary.Dict): list<string> = 
         /// Reduce n occurences into a list of occurence of 1
         let expandWithDuplicate (id: uint32, count: uint32, a) =
             match count with
@@ -226,21 +226,41 @@ module Scrabble =
         let possibilitesFlattened: list<list<char>>             = List.concat permutationsPossibilities
         
         // 3. Traverse and filter to return the final list<string>
-        let possibleWords: list<string> = Set.ofList [for permutation: list<char> in possibilitesFlattened -> Word.traverse '-' (permutation) (dict) (false)] |> Set.toList
-        List.filter (fun x -> x <> "") possibleWords
+        Print.printString (sprintf "[2. BEFORE]\n" )
+        let latestMoveChar = 
+            if st.moves.IsEmpty then
+                Print.printString (sprintf "[2. IS EMPTY] (%A)\n" st.moves)
+                '-'
+            else 
+                Print.printString (sprintf "[2. MAKE WORD FROM] (%A)\n" (List.last st.moves |> snd |> snd |> fst))
+                List.last st.moves |> snd |> snd |> fst //Get the char of the last used move
+    
+        let possibleWords: list<string> = Set.ofList [for permutation: list<char> in possibilitesFlattened -> Word.traverse st latestMoveChar (permutation) (dict)] |> Set.toList
+        Print.printString (sprintf "[2. Possible?] (%A)\n" possibleWords)
+        if possibleWords.IsEmpty then
+            //Print.printString (sprintf "[2. NO WORDS] (%A)\n" possibleWords)
+            ["HELLO"]
+        else 
+            Print.printString (sprintf "[2. WORDS] (%A)\n" (List.filter (fun x -> x <> "") possibleWords))
+            List.filter (fun x -> x <> "") possibleWords
 
-    let rec findCorrespondingPoint (ourWord: string) (lettersInHand: list<uint32 * uint32 * Set<char*int>>) (accList: list<uint32 * uint32 * Set<char*int>>): list<uint32 * uint32 * Set<char*int>> =
+    let rec findCorrespondingPoint (st: State.state) (ourWord: string) (lettersInHand: list<uint32 * uint32 * Set<char*int>>) (accList: list<uint32 * uint32 * Set<char*int>>): list<uint32 * uint32 * Set<char*int>> =
         let findWildCardMatch (listTuple:list<char*int>) (letter:char) : (char * int) = List.filter (fun pair -> fst pair = letter) listTuple |> List.head
+        Print.printString (sprintf "[2.Before match] %A\n" lettersInHand)
         match ourWord with
         | "" -> accList
         | _  -> 
-            let ourLetter   : char   = ourWord.[0]
-            let restOurWord : string = ourWord.Substring(1)
+            let isFirstMove : int = if ourWord.Length <= 2 || st.moves.IsEmpty then 0 else 1
+            Print.printString (sprintf "[2.isfirstmove] %A\n" isFirstMove)
+            let ourLetter   : char   = ourWord.[0 + isFirstMove]
+            Print.printString (sprintf "[2.Letter] %A\n" ourLetter)
+            let restOurWord : string = ourWord.Substring(1 + isFirstMove)
             match List.rev lettersInHand with
             | [] ->
                 accList
 
             | (id, occ, set)::tail when id <> 0u && (set |> Set.toList |> List.head |> fst) = ourLetter  ->
+                Print.printString (sprintf "[2.MATCHING not wildcard] %A\n" (id, occ, set))
                 let newAccList: list<uint32 * uint32 * Set<char*int>> =
                     match occ with
                     | 1u -> List.append accList [(id, occ,    set)]
@@ -251,18 +271,61 @@ module Scrabble =
                     | 1u -> tail
                     | _  -> List.append tail [(id, occ-1u, set)]
 
-                findCorrespondingPoint (restOurWord) (List.rev newHand) (newAccList)
+                findCorrespondingPoint (st) (restOurWord) (List.rev newHand) (newAccList)
             
             | (id, occ, set)::tail when id  = 0u && (fst (findWildCardMatch (Set.toList set) ourLetter) = ourLetter) ->
+                Print.printString (sprintf "[2.MATCHING IS wildcard] %A\n" (id, occ, set))
                 let matched : char * int                               =  findWildCardMatch (Set.toList set) ourLetter
                 let newSet  : Set<char * int>                          = Set.singleton matched
                 let newList : (uint32 * uint32 * Set<char * int>) list = List.append accList [(id, occ, newSet)]
-                findCorrespondingPoint (restOurWord) (List.rev tail) (newList)
+                findCorrespondingPoint (st) (restOurWord) (List.rev tail) (newList)
             
             | head::tail ->
                 // Put the word back behind
                 let newHand: (uint32 * uint32 * Set<char * int>) list = List.append tail [head]
-                findCorrespondingPoint ourWord (List.rev newHand) accList
+                findCorrespondingPoint (st) ourWord (List.rev newHand) accList
+    
+
+    let addCoordinates (st: State.state) (hand: list<uint32 * uint32 * Set<char*int>>) : list<coord * (uint32 * (char * int))> =
+         /// Returns the direction to take from the list of moves. The result is represented as a coord but used as a vector.
+        let getDirection (moves: list<coord * (uint32 * (char * int))>): coord =
+            let (.-.) (a:coord) (b:coord) : coord = (fst a - fst b , snd a - snd b)
+            let rev (a:coord) : coord = coord (snd a, fst a)
+            match moves.Length with
+            | 0 -> coord (1, 0)
+            | _ ->
+                let (coord1, _) = List.last moves
+                let (coord2, _) = moves |> List.rev |> List.tail |> List.rev |> List.last
+                rev (coord1 .-. coord2)
+        
+        let handToMatchCoords: list<uint32 * (char * int)> = List.map (fun (id, occ, set) -> (id, (set |> Set.minElement)) ) hand
+        Print.printString (sprintf "[3.handMatchCoords %A\n" handToMatchCoords)
+        
+        let direction     : coord = getDirection st.moves
+        Print.printString (sprintf "[3.getDirection %A\n" direction)
+
+        let coordAdd (a: coord) (b: coord) :coord = (fst a + fst b, snd a + snd b)
+
+        let rec buildPath (latest: coord) (length: int) (acc: list<coord>): list<coord> =
+            Print.printString (sprintf "[3.handCoords Buildpath %A %A\n" length acc)    
+            if length = 0 then 
+                acc
+            else
+                buildPath ( coordAdd latest direction) (length - 1) (List.append acc [latest])
+        
+        let handCoords =
+            if st.moves.IsEmpty then
+                let handSeq = {0..handToMatchCoords.Length-1} |> Seq.toList
+                List.map (fun x -> coord (x, 0)) handSeq
+            else 
+                let lastCoord: coord = List.last st.moves |> fst
+                Print.printString (sprintf "[3.lastCoord %A\n" lastCoord)
+                buildPath (coordAdd lastCoord direction) (handToMatchCoords.Length) ([])
+                
+        Print.printString (sprintf "[3.handCoords %A\n"  handCoords)
+   
+        List.zip handCoords handToMatchCoords
+        
 
     /// Run the game
     /// * cstream : idk
@@ -278,35 +341,24 @@ module Scrabble =
             Print.printString (sprintf "[1.PREPROCESS] %A\n" idsOccurenceSets)
             
             // 2. Find words -- depending on my hand: <ids:uint32 * occurence:uint32 * Set<char*int> -> list<string>
-            let words       : list<string>               = findWords idsOccurenceSets st.dict
-            let firstWord   : string                     = words |> List.head //First word in list
-            let handMatched : list<uint32 * uint32 * Set<char * int>> = findCorrespondingPoint firstWord idsOccurenceSets []
+            let words       : list<string>               = findWords st idsOccurenceSets st.dict
+            let chosenWord  : string                     = words |> List.head //First word in list
+            Print.printString (sprintf "[2.CHOSEN] %A\n" chosenWord)
+            let handMatched : list<uint32 * uint32 * Set<char * int>> = findCorrespondingPoint st chosenWord idsOccurenceSets []
             Print.printString (sprintf "[2.FIND-WORDS] (%A) %A\n" words.Length words)
-            Print.printString (sprintf "[2.FIND-WORDS] (CORRESPONDING '%A') %A\n" firstWord handMatched)
+            Print.printString (sprintf "[2.FIND-WORDS] (CORRESPONDING '%A') %A\n" chosenWord handMatched)
             
             // 3. Which words can be put ? -- depending on the board
             // : (list<string>, board, optional:latest) -> list<string>
-            let handMatchCoords: list<uint32 * (char * int)> = List.map (fun (id, occ, set) -> (id, (set |> Set.minElement)) ) handMatched
-            Print.printString (sprintf "[3.handMatchCoords %A\n" handMatchCoords)
-            let handSeq = {0..handMatchCoords.Length-1} |> Seq.toList
-            Print.printString (sprintf "[3.handMatchCoords %A\n" handSeq)
-            let handCoords    : list<coord> = List.map (fun x -> coord (x, 0)) handSeq
-            let finalMoveList : list<coord * (uint32 * (char * int))> = List.zip handCoords handMatchCoords
-            Print.printString (sprintf "[3.finalMoveList %A\n" finalMoveList)
-
+            let finalList = addCoordinates st handMatched
             
-            // 4. Decide where to put the words (starting coord of the word + direction exemple:up=(0,1)) -- depending on the board
-            // : list<string> -> list<coord * coord>
-            
-            // 5. Build the move
-            // : ? -> list<coord * (uint32 * (char * int))>
             
             /// List of coordinates for each characters to build a word
             /// * coord  : (x,y) on the board
             /// * uint32 : ID of a tile (represents a character or wildcard)
             /// * char   : chosen character (id=0 -> could be 'a')
             /// * int    : points for the character
-            let move: list<coord * (uint32 * (char * int))> = finalMoveList
+            let move: list<coord * (uint32 * (char * int))> = finalList
             
             // N. Send "Move" variable to the stream
             Print.printString (sprintf "[N.MOVES %A\n" st.moves)
