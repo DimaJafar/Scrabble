@@ -372,26 +372,22 @@ module Scrabble =
         let rec aux (st : State.state) =
             Print.printHand pieces (st.hand)
 
-            // 1. Preprocessing: _ -> <ids:uint32 * occurence:uint32 * Set<char*int>
+            // 1. Preprocessing unexploiteable datastructures
             let idsOccurenceSets: list<uint32 * uint32 * 'a> = preprocessHand st.hand pieces
             Print.printString (sprintf "[1.PREPROCESS] %A\n" idsOccurenceSets)
             
-            // 2. Find words -- depending on my hand: <ids:uint32 * occurence:uint32 * Set<char*int> -> list<string>
+            // 2. Find words that can be buildt and placed
             let words       : list<string>               = findWords st idsOccurenceSets st.dict
             let chosenWord  : string                     = words |> List.head //First word in list
-            Print.printString (sprintf "[2.CHOSEN] %A\n" chosenWord)
             let handMatched : list<uint32 * uint32 * Set<char * int>> = findCorrespondingPoint st chosenWord idsOccurenceSets []
+            Print.printString (sprintf "[2.CHOSEN] %A\n" chosenWord)
             Print.printString (sprintf "[2.FIND-WORDS] (%A) %A\n" words.Length words)
             Print.printString (sprintf "[2.FIND-WORDS] (CORRESPONDING '%A') %A\n" chosenWord handMatched)
             
-            // 3. Which words can be put ? -- depending on the board
-            // : (list<string>, board, optional:latest) -> list<string>
-            let m: list<coord * (uint32 * (char * int))> = addCoordinates st handMatched
+            // 3. Build the next move
+            let move: list<coord * (uint32 * (char * int))> = addCoordinates st handMatched
             
-            /// 4.
-            let move: list<coord * (uint32 * (char * int))> = finalList
-            
-            // 5. Send "Move" variable to the stream
+            // 4. Send "Move" variable to the stream
             Print.printString (sprintf "[N.MOVES %A\n" st.moves)
             send cstream (SMPlay move)
            
