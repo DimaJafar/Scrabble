@@ -95,7 +95,7 @@ module State =
         }
 
 module Word =
-    let rec findWord (listOfChars: list<char>) dict (word:string) = 
+    let rec findWord (listOfChars: list<char>) dict (word:string) : string = 
         match listOfChars with
         | [] -> ""
         | head::x::tail ->
@@ -117,14 +117,14 @@ module Word =
             | None ->
                 newWord
 
-    let permute list =
+    let permute list : list<list<'a>> =
         let rec inserts e = function
             | [] -> [[e]]
             | x::xs as list -> (e::list)::(inserts e xs |> List.map (fun xs' -> x::xs'))
 
         List.fold (fun accum x -> List.collect (inserts x) accum) [[]] list
 
-    let traverse (st: State.state) (fstChar: char) (listChars: list<char>) (dict: Dictionary.Dict) =
+    let traverse (st: State.state) (fstChar: char) (listChars: list<char>) (dict: Dictionary.Dict) : string =
         if st.moves.IsEmpty then //Find ord fra ens hånd kun, fordi der ikke er blevet spillet før
             match findWord listChars dict "" with
             | word when (Dictionary.lookup word dict) -> 
@@ -147,8 +147,12 @@ module Word =
 module Scrabble =
     open System.Threading
 
-    /// TODO Given a response, state and an auxiliary function;
-    /// Manages the state accordingly with RCM / CM objects
+    /// Given a response, state and an auxiliary function, it manages the state accordingly with RCM / CM objects
+    ///
+    /// #### Parameters
+    /// * msg (Response)               : Output from trying to run moves
+    /// * st (State.state)             : State of the game
+    /// * auxFun (State.state -> unit) : A function that runs the game logic
     let handleClientMessage(msg: Response, st: State.state, auxFun: (State.state -> unit)) =
         match msg with
         | RCM (CMPlaySuccess(ms, points, newPieces)) ->
@@ -168,15 +172,27 @@ module Scrabble =
         | RCM a -> failwith (sprintf "not implmented: %A" a)
         | RGPE err -> printfn "Gameplay Error:\n%A" err; auxFun st
 
-    /// TODO Return a List of <ids:uint32 * occurence:uint32 * Set<char*int>>
-    /// * m      : MultiSet representing the hand of a player w/ ids + no occurences
-    /// * pieces : mapping id to a set of characters that can be used
+    /// Given the hand in its raw dat format and the dictionary that transcode an id into a Set<char * int>
+    ///
+    /// #### Parameters
+    /// * m (MultiSet<uint32>)     : MultiSet representing the hand of a player w/ ids + no occurences
+    /// * pieces (Map<uint32, 'a>) : Dictionary transcoding an id to a set of characters and the associated points
+    /// 
+    /// #### Returns
+    /// (list<uint32 * uint32 * Set<char * int>>) List of a tuple containing (id, no. tiles, Set of (character, point))
     let preprocessHand (m: MultiSet<uint32>)(pieces: Map<uint32, 'a>): list<uint32 * uint32 * 'a> =
         let idsOccurence: list<uint32 * uint32> = MultiSet.toList1 m
         List.map (fun (id, occ) -> (id, occ, Map.find id pieces)) idsOccurence
 
-    /// TODO Find possible words from a hand and returns them as a list of string.
-    /// hand : list of ids/occurences/chars
+    /// Find possible words from a hand and returns them as a list of string.
+    /// 
+    /// #### Parameters
+    /// * st (State.state)                             : State of the game
+    /// * hand (list<uint32 * uint32 * Set<char*int>>) : Hand of the player as a list of a tuple containing (id, no. tiles, Set of (character, point))
+    /// * dict (dict: Dictionary.Dict)                 : Dictionary of words that exists for this game
+    /// 
+    /// #### Returns
+    /// (list<string>) List of words that can be placed
     let findWords (st: State.state) (hand: list<uint32 * uint32 * Set<char*int>>) (dict: Dictionary.Dict): list<string> = 
         /// Reduce n occurences into a list of occurence of 1
         let expandWithDuplicate (id: uint32, count: uint32, a) =
@@ -244,6 +260,16 @@ module Scrabble =
             Print.printString (sprintf "[2. WORDS] (%A)\n" (List.filter (fun x -> x <> "") possibleWords))
             List.filter (fun x -> x <> "") possibleWords
 
+    /// Filter and returns the letters in the hand that can be used to buid the given word.
+    /// 
+    /// #### Parameters
+    /// * st /State.state)                                      : State of the game
+    /// * ourWord (string)                                      : Word to build
+    /// * lettersInHand (list<uint32 * uint32 * Set<char*int>>) : Hand to use
+    /// * accList (list<uint32 * uint32 * Set<char*int>>)       : Accumulator building the result
+    /// 
+    /// ### Returns
+    /// (list<uint32 * uint32 * Set<char*int>>) Like the hand but onnly with the elements building the word
     let rec findCorrespondingPoint (st: State.state) (ourWord: string) (lettersInHand: list<uint32 * uint32 * Set<char*int>>) (accList: list<uint32 * uint32 * Set<char*int>>): list<uint32 * uint32 * Set<char*int>> =
         let findWildCardMatch (listTuple:list<char*int>) (letter:char) : (char * int) = List.filter (fun pair -> fst pair = letter) listTuple |> List.head
         Print.printString (sprintf "[2.Before match] %A\n" lettersInHand)
@@ -285,7 +311,15 @@ module Scrabble =
                 let newHand: (uint32 * uint32 * Set<char * int>) list = List.append tail [head]
                 findCorrespondingPoint (st) ourWord (List.rev newHand) accList
     
-
+    /// Adds the coordinates to the hand where the hand can be placed according to the game state.
+    /// Note : *the word is placed at the end of one another.*
+    /// 
+    /// #### Parameters
+    /// * st (State.state)                             : State of the game
+    /// * hand (list<uint32 * uint32 * Set<char*int>>) : Hand of the player
+    /// 
+    /// ### Returns
+    /// (: list<coord * (uint32 * (char * int))>) 
     let addCoordinates (st: State.state) (hand: list<uint32 * uint32 * Set<char*int>>) : list<coord * (uint32 * (char * int))> =
          /// Returns the direction to take from the list of moves. The result is represented as a coord but used as a vector.
         let getDirection (moves: list<coord * (uint32 * (char * int))>): coord =
@@ -328,9 +362,11 @@ module Scrabble =
         
 
     /// Run the game
-    /// * cstream : idk
-    /// * pieces  : constant data transcoding IDs to set of corresponding characters
-    /// * st      : game state
+    /// 
+    /// #### Parameters
+    /// * cstream : Iterator-like datastructure holding the player's choice
+    /// * pieces  : Data that transcodes IDs to set of corresponding characters
+    /// * st      : State of the game
     let playGame (cstream: Stream) (pieces: Map<uint32, 'a>) (st : State.state) =
 
         let rec aux (st : State.state) =
@@ -350,17 +386,12 @@ module Scrabble =
             
             // 3. Which words can be put ? -- depending on the board
             // : (list<string>, board, optional:latest) -> list<string>
-            let finalList = addCoordinates st handMatched
+            let m: list<coord * (uint32 * (char * int))> = addCoordinates st handMatched
             
-            
-            /// List of coordinates for each characters to build a word
-            /// * coord  : (x,y) on the board
-            /// * uint32 : ID of a tile (represents a character or wildcard)
-            /// * char   : chosen character (id=0 -> could be 'a')
-            /// * int    : points for the character
+            /// 4.
             let move: list<coord * (uint32 * (char * int))> = finalList
             
-            // N. Send "Move" variable to the stream
+            // 5. Send "Move" variable to the stream
             Print.printString (sprintf "[N.MOVES %A\n" st.moves)
             send cstream (SMPlay move)
            
