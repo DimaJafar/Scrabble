@@ -43,17 +43,12 @@ module Print =
         MultiSet.fold (fun _ x i -> forcePrint (sprintf "%d -> (%A, %d)\n" x (Map.find x pieces) i)) ()
 
 module State = 
-    // Make sure to keep your state localised in this module. It makes your life a whole lot easier.
-    // Currently, it only keeps track of your hand, your player numer, your board, and your dictionary,
-    // but it could, potentially, keep track of other useful
-    // information, such as number of players, player turn, etc.
-
     type state = {
         board         : Parser.board//int * int -> bool
         dict          : ScrabbleUtil.Dictionary.Dict
         playerNumber  : uint32
         hand          : MultiSet.MultiSet<uint32>
-        moves : list<coord * (uint32 * (char * int))>
+        moves         : list<coord * (uint32 * (char * int))>
     }
 
     let mkState b d pn h pm = {board = b; dict = d;  playerNumber = pn; hand = h; moves = pm}
@@ -68,13 +63,13 @@ module State =
 
 
     let removeTiles (hand: MultiSet<uint32>) (ms: (coord * (uint32 * (char * int))) list) =
-               let rec removeTile  (tiles: (coord * (uint32 * (char * int))) list) (hand: MultiSet<uint32>)= 
-                 match tiles with 
-                 |[] -> hand 
-                 |(_, (tileId, (_))) :: tail -> 
-                 let updatedhand = removeSingle tileId hand
-                 removeTile tail updatedhand 
-               removeTile ms hand 
+        let rec removeTile  (tiles: (coord * (uint32 * (char * int))) list) (hand: MultiSet<uint32>)= 
+            match tiles with 
+            |[] -> hand 
+            |(_, (tileId, (_))) :: tail -> 
+            let updatedhand = removeSingle tileId hand
+            removeTile tail updatedhand 
+        removeTile ms hand 
 
     let addTiles (hand: MultiSet<uint32>) (newPieces: (uint32 * uint32) list) =
         let rec addTile (piece: (uint32 * uint32) list) (hand: MultiSet<uint32>) = 
@@ -93,6 +88,22 @@ module State =
             hand = updateHandWithNewTiles 
             moves = addUsedMoves
         }
+
+    let remove (hand: MultiSet<uint32>) =
+        let rec removeAll (hand: MultiSet<uint32>) = 
+            let l = MultiSet.toList1 hand
+            match l with
+            | [] -> hand
+            | (id, count)::tail ->  
+                let newHand = removeSingle id hand
+                removeAll newHand  
+        removeAll hand
+
+            
+    let updateChange (st: state) (newPieces: (uint32 * uint32) list) (hand: MultiSet<uint32>) = 
+        let removeTiles = remove hand
+        let updateHand = addTiles removeTiles newPieces
+        { st with hand = updateHand}
 
 module Word =
     let rec findWord (listOfChars: list<char>) dict (word:string) : string = 
@@ -153,7 +164,7 @@ module Scrabble =
     /// * msg (Response)               : Output from trying to run moves
     /// * st (State.state)             : State of the game
     /// * auxFun (State.state -> unit) : A function that runs the game logic
-    let handleClientMessage(msg: Response, st: State.state, auxFun: (State.state -> unit)) =
+    let handleClientMessage (msg: Response, st: State.state, auxFun: (State.state -> unit)) =
         match msg with
         | RCM (CMPlaySuccess(ms, points, newPieces)) ->
             (* Successful play by you. Update your state (remove old tiles, add the new ones, change turn, etc) *)
@@ -163,6 +174,14 @@ module Scrabble =
         | RCM (CMPlayed (pid, ms, points)) ->
             (* Successful play by other player. Update your state *)
             let st' = st // This state needs to be updated
+            auxFun st'
+        | RCM (CMChangeSuccess(newTiles)) ->
+            printfn "NEWTILES :%A" newTiles;
+            let st' = State.updateChange st newTiles st.hand
+            auxFun st'
+        | RCM (CMChange(playerId, numberOfTiles)) ->
+            printfn "Tryna %A change tiles" numberOfTiles;
+            let st' = st 
             auxFun st'
         | RCM (CMPlayFailed (pid, ms)) ->
             (* Failed play. Update your state *)
@@ -200,7 +219,7 @@ module Scrabble =
             | count when count = 1u -> [( id , count , a)]
             | count                 -> List.replicate (int count) (id , 1u, a)
         
-
+        //Helper for checking if a letter element is a wildcard -> for when we need to consider all the letters in the wildcard
         let isWildcard (element: uint32 * uint32 * Set<char*int>): bool = 
             match element with
             | id, _, _ when id = 0u -> true
@@ -209,6 +228,7 @@ module Scrabble =
         /// Get the char of a Set<char*int>. Only used for non-wildcard char
         let getNormalChar (element: uint32 * uint32 * Set<char*int>): char = match element with (_, _, charSet) ->  charSet |> Set.minElement |> fst
         
+        /// Get all chars of the wildcard in a list.
         let getWildCardChars (element: uint32 * uint32 * Set<char*int>): list<char> = 
             match element with (_, _, charSet: Set<char * int>) ->  
                 charSet |> Set.toList |> List.map (fun x -> fst x)
@@ -233,6 +253,7 @@ module Scrabble =
 
         // 1. Get a list<list<char>> -> possibilities taking wildcard into account
         let handFlattened : list<uint32 * uint32 * Set<char*int>> = List.collect expandWithDuplicate hand
+        // If there is a wildCard, theres 26 lists of chars inside the list. If no wildcard, theres just 1 list of chars.
         let possibilites  : list<list<char>>                      = buildPossibilities handFlattened [[]]
         
         // 2. | a. Generate permutation for each list in the list<char> -> it create a list<list<list<char>>>
@@ -374,22 +395,31 @@ module Scrabble =
 
             // 1. Preprocessing unexploiteable datastructures
             let idsOccurenceSets: list<uint32 * uint32 * 'a> = preprocessHand st.hand pieces
-            Print.printString (sprintf "[1.PREPROCESS] %A\n" idsOccurenceSets)
+            //Print.printString (sprintf "[1.PREPROCESS] %A\n" idsOccurenceSets)
+            //Print.printString (sprintf "\n[HAND LENGTH %A\n" idsOccurenceSets.Length)
+
             
             // 2. Find words that can be buildt and placed
             let words       : list<string>               = findWords st idsOccurenceSets st.dict
-            let chosenWord  : string                     = words |> List.head //First word in list
-            let handMatched : list<uint32 * uint32 * Set<char * int>> = findCorrespondingPoint st chosenWord idsOccurenceSets []
-            Print.printString (sprintf "[2.CHOSEN] %A\n" chosenWord)
-            Print.printString (sprintf "[2.FIND-WORDS] (%A) %A\n" words.Length words)
-            Print.printString (sprintf "[2.FIND-WORDS] (CORRESPONDING '%A') %A\n" chosenWord handMatched)
+            if words.IsEmpty then
+                let listOfIDs = List.map (fun (id, _ , _ ) -> (id)) idsOccurenceSets
+                send cstream (SMChange listOfIDs)
             
-            // 3. Build the next move
-            let move: list<coord * (uint32 * (char * int))> = addCoordinates st handMatched
-            
-            // 4. Send "Move" variable to the stream
-            Print.printString (sprintf "[N.MOVES %A\n" st.moves)
-            send cstream (SMPlay move)
+            else 
+                let chosenWord  : string                     = words |> List.head //First word in list
+                let handMatched : list<uint32 * uint32 * Set<char * int>> = findCorrespondingPoint st chosenWord idsOccurenceSets []
+                Print.printString (sprintf "[2.CHOSEN] %A\n" chosenWord)
+                Print.printString (sprintf "[2.FIND-WORDS] (%A) %A\n" words.Length words)
+                Print.printString (sprintf "[2.FIND-WORDS] (CORRESPONDING '%A') %A\n" chosenWord handMatched)
+                
+                // 3. Build the next move
+                let move: list<coord * (uint32 * (char * int))> = addCoordinates st handMatched
+                
+                // 4. Send "Move" variable to the stream
+                Print.printString (sprintf "[N.MOVES %A\n" st.moves)
+                Print.printString (sprintf "[SENDING MOVES %A\n" move)
+                
+                send cstream (SMPlay move)
            
             let msg: Response = recv cstream
             handleClientMessage(msg, st, aux)
