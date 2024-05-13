@@ -76,13 +76,16 @@ module State =
             match piece with 
             | [] -> hand 
             | (tileId, count)  :: tail -> 
-            let updatedHand = addSingle tileId hand
-            addTile tail updatedHand  
+            let updatedHand = add tileId count hand
+            addTile tail updatedHand
         addTile newPieces hand   
 
     let updateState (st: state) (ms: (coord * (uint32 * (char * int))) list) (newPieces: (uint32 * uint32) list) =
+        Print.printString (sprintf "\nLetters used %A \n" ms.Length)
         let removeTilesFromHand = removeTiles st.hand ms
+        Print.printString (sprintf "\nCurrent hand is of length %A\n" (removeTilesFromHand|> MultiSet.toList1 |> List.length))
         let updateHandWithNewTiles = addTiles removeTilesFromHand newPieces
+        Print.printString (sprintf "\nGot back %A tiles %A \n" newPieces.Length newPieces)
         let addUsedMoves = List.append st.moves ms
         { st with 
             hand = updateHandWithNewTiles 
@@ -290,19 +293,23 @@ module Scrabble =
     /// * accList (list<uint32 * uint32 * Set<char*int>>)       : Accumulator building the result
     /// 
     /// ### Returns
-    /// (list<uint32 * uint32 * Set<char*int>>) Like the hand but onnly with the elements building the word
+    /// (list<uint32 * uint32 * Set<char*int>>) Like the hand but only with the elements building the word
     let rec findCorrespondingPoint (st: State.state) (ourWord: string) (lettersInHand: list<uint32 * uint32 * Set<char*int>>) (accList: list<uint32 * uint32 * Set<char*int>>): list<uint32 * uint32 * Set<char*int>> =
         let findWildCardMatch (listTuple:list<char*int>) (letter:char) : (char * int) = List.filter (fun pair -> fst pair = letter) listTuple |> List.head
-        Print.printString (sprintf "[2.Before match] %A\n" lettersInHand)
+        let lettersReversed = List.rev lettersInHand
+        Print.printString (sprintf "[2.Before MATCH] Tiles in hand %A\n" lettersReversed)
         match ourWord with
         | "" -> accList
         | _  -> 
-            let isFirstMove : int = if ourWord.Length <= 2 || st.moves.IsEmpty then 0 else 1
-            Print.printString (sprintf "[2.isfirstmove] %A\n" isFirstMove)
-            let ourLetter   : char   = ourWord.[0 + isFirstMove]
-            Print.printString (sprintf "[2.Letter] %A\n" ourLetter)
-            let restOurWord : string = ourWord.Substring(1 + isFirstMove)
-            match List.rev lettersInHand with
+            Print.printString (sprintf "[2.Current word = %A \n" ourWord)
+            //Takes the letters of the word that we want to match with our tiles. First letter and then the rest.
+            //If the word is continuing from another, start from the second letter of the word index 1.
+            //let isFirstMove : int = if st.moves.IsEmpty || ourWord.Length <= 2 then 0 else 1 //ourWord.Length <= 2 
+            //Print.printString (sprintf "[2.isfirstmove] %A\n" isFirstMove)
+            let ourLetter   : char   = ourWord.[0]
+            //Print.printString (sprintf "[2.Letter of word] %A\n" ourLetter)
+            let restOurWord : string = ourWord.Substring(1)
+            match lettersReversed with
             | [] ->
                 accList
 
@@ -402,13 +409,24 @@ module Scrabble =
             // 2. Find words that can be buildt and placed
             let words       : list<string>               = findWords st idsOccurenceSets st.dict
             if words.IsEmpty then
-                let listOfIDs = List.map (fun (id, _ , _ ) -> (id)) idsOccurenceSets
+                //Replicated from findWords helper function, because its easier...
+                let expandWithDuplicate (id: uint32, count: uint32, a) =
+                    match count with
+                    | count when count = 1u -> [( id , count , a)]
+                    | count                 -> List.replicate (int count) (id , 1u, a)
+                let flattenedhand =  List.collect expandWithDuplicate idsOccurenceSets
+                
+                let listOfIDs = List.map (fun (id, _ , _ ) -> (id)) flattenedhand
                 send cstream (SMChange listOfIDs)
             
             else 
                 let chosenWord  : string                     = words |> List.head //First word in list
-                let handMatched : list<uint32 * uint32 * Set<char * int>> = findCorrespondingPoint st chosenWord idsOccurenceSets []
                 Print.printString (sprintf "[2.CHOSEN] %A\n" chosenWord)
+                let handMatched : list<uint32 * uint32 * Set<char * int>> = 
+                    if st.moves.IsEmpty then
+                        findCorrespondingPoint st chosenWord idsOccurenceSets []
+                    else 
+                        findCorrespondingPoint st (chosenWord.Substring(1)) idsOccurenceSets []
                 Print.printString (sprintf "[2.FIND-WORDS] (%A) %A\n" words.Length words)
                 Print.printString (sprintf "[2.FIND-WORDS] (CORRESPONDING '%A') %A\n" chosenWord handMatched)
                 
@@ -416,9 +434,10 @@ module Scrabble =
                 let move: list<coord * (uint32 * (char * int))> = addCoordinates st handMatched
                 
                 // 4. Send "Move" variable to the stream
-                Print.printString (sprintf "[N.MOVES %A\n" st.moves)
-                Print.printString (sprintf "[SENDING MOVES %A\n" move)
-                
+                //Print.printString (sprintf "[3.EXCISTING MOVES %A\n" st.moves)
+                Print.printString (sprintf "[3.Used tiles %A\n" st.moves.Length)
+                Print.printString (sprintf "[3.SENDING MOVES %A\n" move)
+                Print.printString (sprintf "[3. NR LETTERS USED] %A\n" move.Length)
                 send cstream (SMPlay move)
            
             let msg: Response = recv cstream
