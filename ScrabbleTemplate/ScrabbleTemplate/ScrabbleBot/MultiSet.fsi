@@ -25,6 +25,10 @@
     val foldBack : ('a -> uint32 -> 'b -> 'b) -> MultiSet<'a> -> 'b -> 'b
     
     val ofList : 'a list -> MultiSet<'a>
+
+    val ofList1 : 'a list -> MultiSet<'a> 
+
+
     val toList : MultiSet<'a> -> 'a list
 
     val toList1 : MultiSet<'a> -> ('a * uint32) list

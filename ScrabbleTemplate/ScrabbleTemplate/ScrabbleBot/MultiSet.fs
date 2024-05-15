@@ -56,6 +56,8 @@
         match s with |R e -> Map.foldBack f e acc 
         
     let ofList (_ : 'a list) : MultiSet<'a> = R (Map.empty)
+
+    let ofList1 lst = List.fold (fun acc elem -> addSingle elem acc) empty lst
     
     let toList (_ : MultiSet<'a>) : 'a list = []
 
