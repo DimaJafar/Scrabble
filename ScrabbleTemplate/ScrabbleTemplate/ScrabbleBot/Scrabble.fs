@@ -186,7 +186,7 @@ module Scrabble =
             printfn "Tryna %A change tiles" numberOfTiles;
             let st' = st 
             auxFun st'
-        | RCM (CMPlayFailed (pid, ms)) ->
+        | RCM (CMPlayFailed (pid, ms)) -> 
             (* Failed play. Update your state *)
             let st' = st // This state needs to be updated
             auxFun st'
@@ -275,6 +275,75 @@ module Scrabble =
                 Print.printString (sprintf "[2. MAKE WORD FROM] (%A)\n" (List.last st.moves |> snd |> snd |> fst))
                 List.last st.moves |> snd |> snd |> fst //Get the char of the last used move
     
+        let possibleWords: list<string> = Set.ofList [for permutation: list<char> in possibilitesFlattened -> Word.traverse st latestMoveChar (permutation) (dict)] |> Set.toList
+        Print.printString (sprintf "[2. Possible?] (%A)\n" possibleWords)
+        if possibleWords.IsEmpty then
+            //Print.printString (sprintf "[2. NO WORDS] (%A)\n" possibleWords)
+            ["HELLO"]
+        else 
+            Print.printString (sprintf "[2. WORDS] (%A)\n" (List.filter (fun x -> x <> "") possibleWords))
+            List.filter (fun x -> x <> "") possibleWords
+
+
+    let findWordsAgain (st: State.state) (hand: list<uint32 * uint32 * Set<char*int>>) (dict: Dictionary.Dict): list<string> = 
+        /// Reduce n occurences into a list of occurence of 1
+        let expandWithDuplicate (id: uint32, count: uint32, a) =
+            match count with
+            | count when count = 1u -> [( id , count , a)]
+            | count                 -> List.replicate (int count) (id , 1u, a)
+        
+        //Helper for checking if a letter element is a wildcard -> for when we need to consider all the letters in the wildcard
+        let isWildcard (element: uint32 * uint32 * Set<char*int>): bool = 
+            match element with
+            | id, _, _ when id = 0u -> true
+            | _ -> false
+        
+        /// Get the char of a Set<char*int>. Only used for non-wildcard char
+        let getNormalChar (element: uint32 * uint32 * Set<char*int>): char = match element with (_, _, charSet) ->  charSet |> Set.minElement |> fst
+        
+        /// Get all chars of the wildcard in a list.
+        let getWildCardChars (element: uint32 * uint32 * Set<char*int>): list<char> = 
+            match element with (_, _, charSet: Set<char * int>) ->  
+                charSet |> Set.toList |> List.map (fun x -> fst x)
+
+        /// Build stuff
+        let rec buildPossibilities (h: list<uint32 * uint32 * Set<char*int>>) (acc: list<list<char>>): list<list<char>> =
+            match h with
+            | [] -> acc
+            | head::tail ->
+                match isWildcard head with
+                | true  ->
+                    let lettersWildcard : list<char> = getWildCardChars head
+                    let appendCharList (x: char) (l: list<char>): list<char> = List.append l [x]
+                    let newAcc: list<list<char>> = List.collect (fun (x: char) -> List.map (fun (y: list<char>) -> appendCharList x y) acc) lettersWildcard
+                    
+                    buildPossibilities (tail) (newAcc)
+
+                | false -> 
+                    let currentChar : char = getNormalChar head
+                    let newAcc      : list<list<char>> = List.map (fun x -> List.append x [currentChar]) acc
+                    buildPossibilities (tail) (newAcc)
+
+        // 1. Get a list<list<char>> -> possibilities taking wildcard into account
+        let handFlattened : list<uint32 * uint32 * Set<char*int>> = List.collect expandWithDuplicate hand
+        // If there is a wildCard, theres 26 lists of chars inside the list. If no wildcard, theres just 1 list of chars.
+        let possibilites  : list<list<char>>                      = buildPossibilities handFlattened [[]]
+        
+        // 2. | a. Generate permutation for each list in the list<char> -> it create a list<list<list<char>>>
+        let permutationsPossibilities: list<list<list<char>>>     = List.map (fun x -> Word.permute x) possibilites
+        
+        // 2. | b. Flatten the list<list<list<char>>> into a list<list<char>>
+        let possibilitesFlattened: list<list<char>>             = List.concat permutationsPossibilities
+        
+        // 3. Traverse and filter to return the final list<string>
+        Print.printString (sprintf "[2. BEFORE]\n" )
+        let latestMoveChar = 
+            if st.moves.IsEmpty then
+                Print.printString (sprintf "[2. IS EMPTY] (%A)\n" st.moves)
+                '-'
+            else 
+                List.rev st.moves |> List.item 1 |> snd |> snd |> fst
+        
         let possibleWords: list<string> = Set.ofList [for permutation: list<char> in possibilitesFlattened -> Word.traverse st latestMoveChar (permutation) (dict)] |> Set.toList
         Print.printString (sprintf "[2. Possible?] (%A)\n" possibleWords)
         if possibleWords.IsEmpty then
@@ -387,7 +456,50 @@ module Scrabble =
         Print.printString (sprintf "[3.handCoords %A\n"  handCoords)
    
         List.zip handCoords handToMatchCoords
+    
+    let addCoordinatesAgain (st: State.state) (hand: list<uint32 * uint32 * Set<char*int>>) : list<coord * (uint32 * (char * int))> =
+        /// Returns the direction to take from the list of moves. The result is represented as a coord but used as a vector.
+        let getDirection (moves: list<coord * (uint32 * (char * int))>): coord =
+            Print.printString (sprintf "[3.LIST OF USED COORDS %A\n" moves)
+            let (.-.) (a:coord) (b:coord) : coord = (fst a - fst b , snd a - snd b)
+            let rev (a:coord) : coord = coord (snd a, fst a)
+            match moves.Length with
+            | 0 -> coord (1, 0)
+            | _ ->
+                let (coord1, _) = List.last moves
+                Print.printString (sprintf "[3.COORD TO MINUS 1 %A\n" coord1)
+                let (coord2, _) = moves |> List.rev |> List.tail |> List.rev |> List.last
+                Print.printString (sprintf "[3.COORD TO MINUS 2 %A\n" coord2)
+                rev (coord1 .-. coord2)
         
+        let handToMatchCoords: list<uint32 * (char * int)> = List.map (fun (id, occ, set) -> (id, (set |> Set.minElement)) ) hand
+        Print.printString (sprintf "[3.handMatchCoords %A\n" handToMatchCoords)
+        
+
+        let direction     : coord = getDirection (st.moves) //(List.rev st.moves |> List.tail |> List.rev)
+        Print.printString (sprintf "[3.getDirection %A\n" direction)
+
+        let coordAdd (a: coord) (b: coord) :coord = (fst a + fst b, snd a + snd b)
+
+        let rec buildPath (latest: coord) (length: int) (acc: list<coord>): list<coord> =
+            Print.printString (sprintf "[3.handCoords Buildpath %A %A\n" length acc)    
+            if length = 0 then 
+                acc
+            else
+                buildPath ( coordAdd latest direction) (length - 1) (List.append acc [latest])
+        
+        let handCoords =
+            if st.moves.IsEmpty then
+                let handSeq = {0..handToMatchCoords.Length-1} |> Seq.toList
+                List.map (fun x -> coord (x, 0)) handSeq
+            else 
+                let lastCoord: coord = List.rev st.moves |> List.tail |> List.head |> fst
+                Print.printString (sprintf "[3.lastCoord %A\n" lastCoord)
+                buildPath (coordAdd lastCoord direction) (handToMatchCoords.Length) ([])
+                
+        Print.printString (sprintf "[3.handCoords %A\n"  handCoords)
+
+        List.zip handCoords handToMatchCoords
 
     /// Run the game
     /// 
@@ -408,18 +520,26 @@ module Scrabble =
             
             // 2. Find words that can be buildt and placed
             let words       : list<string>               = findWords st idsOccurenceSets st.dict
-            if words.IsEmpty then
+            let wordsAgain = 
+                if words.IsEmpty && (not st.moves.IsEmpty) then
+                    findWordsAgain st idsOccurenceSets st.dict
+                else 
+                    []
+
+            if words.IsEmpty && wordsAgain.IsEmpty && (not st.moves.IsEmpty) then
+                Print.printString (sprintf "[2.Words && WordsAgain EMPTY]\n")
                 //Replicated from findWords helper function, because its easier...
                 let expandWithDuplicate (id: uint32, count: uint32, a) =
                     match count with
                     | count when count = 1u -> [( id , count , a)]
                     | count                 -> List.replicate (int count) (id , 1u, a)
                 let flattenedhand =  List.collect expandWithDuplicate idsOccurenceSets
-                
                 let listOfIDs = List.map (fun (id, _ , _ ) -> (id)) flattenedhand
+
                 send cstream (SMChange listOfIDs)
             
-            else 
+            else if (not words.IsEmpty) then
+                Print.printString (sprintf "[2.Words HAS WORD]\n")
                 let chosenWord  : string                     = words |> List.head //First word in list
                 Print.printString (sprintf "[2.CHOSEN] %A\n" chosenWord)
                 let handMatched : list<uint32 * uint32 * Set<char * int>> = 
@@ -439,6 +559,84 @@ module Scrabble =
                 Print.printString (sprintf "[3.SENDING MOVES %A\n" move)
                 Print.printString (sprintf "[3. NR LETTERS USED] %A\n" move.Length)
                 send cstream (SMPlay move)
+            else if words.IsEmpty && (not wordsAgain.IsEmpty) then 
+                Print.printString (sprintf "[2.Words EMPTY, wordsAgain HAS WORD]\n")
+                let chosenWord  : string                     = wordsAgain |> List.head //First word in list
+                Print.printString (sprintf "[2.CHOSEN] %A\n" chosenWord)
+                let handMatched : list<uint32 * uint32 * Set<char * int>> = 
+                    if st.moves.IsEmpty then
+                        findCorrespondingPoint st chosenWord idsOccurenceSets []
+                    else 
+                        findCorrespondingPoint st (chosenWord.Substring(1)) idsOccurenceSets []
+                Print.printString (sprintf "[2.FIND-WORDS] (%A) %A\n" words.Length words)
+                Print.printString (sprintf "[2.FIND-WORDS] (CORRESPONDING '%A') %A\n" chosenWord handMatched)
+                
+                // 3. Build the next move
+                let move: list<coord * (uint32 * (char * int))> = addCoordinatesAgain st handMatched
+                
+                let expandWithDuplicate (id: uint32, count: uint32, a) =
+                    match count with
+                    | count when count = 1u -> [( id , count , a)]
+                    | count                 -> List.replicate (int count) (id , 1u, a)
+                let flattenedhand =  List.collect expandWithDuplicate idsOccurenceSets
+                let listOfIDs = List.map (fun (id, _ , _ ) -> (id)) flattenedhand
+
+
+                let rec checkCoordInList (moves) (matchCoord: coord) = 
+                    match moves with
+                    | [] -> false
+                    | (listCoord, _ )::tail when listCoord = matchCoord -> 
+                        true
+                    | (listCoord, _ )::tail -> checkCoordInList tail matchCoord
+
+                let getDirection (moves: list<coord * (uint32 * (char * int))>): coord =
+                    Print.printString (sprintf "[3.LIST OF USED COORDS %A\n" moves)
+                    let (.-.) (a:coord) (b:coord) : coord = (fst a - fst b , snd a - snd b)
+                    let rev (a:coord) : coord = coord (snd a, fst a)
+                    match moves.Length with
+                    | 0 -> coord (1, 0)
+                    | _ ->
+                        let (coord1, _) = List.last moves
+                        Print.printString (sprintf "[3.COORD TO MINUS 1 %A\n" coord1)
+                        let (coord2, _) = moves |> List.rev |> List.tail |> List.rev |> List.last
+                        Print.printString (sprintf "[3.COORD TO MINUS 2 %A\n" coord2)
+                        (coord1 .-. coord2)
+               
+                // 4. Check for surroundings
+                let sendThisSM = 
+                    match move with
+                    | head::tail ->
+                            let ((coordX, coordY) : coord) = fst head 
+
+                            let direction = getDirection move
+                            Print.printString (sprintf "[4.1] DIRECTION %A\n" direction)
+
+                            if (direction = (0,1)) then
+                                let checkThisCoord = (coordX - 1, coordY)
+                                if checkCoordInList st.moves checkThisCoord then
+                                    Print.printString (sprintf "[4. CANT PLACE -> CHANGE ]\n")
+                                    (SMChange listOfIDs)
+                                else
+                                    Print.printString (sprintf "[4. CAN PLACE SECOND LAST ]\n")
+                                    (SMPlay move)
+                            else if (direction = (1,0)) then
+                                let checkThisCoord = (coordX, coordY-1)
+                                if checkCoordInList st.moves checkThisCoord then
+                                    Print.printString (sprintf "[4. CANT PLACE -> CHANGE ]\n")
+                                    (SMChange listOfIDs)
+                                else
+                                    Print.printString (sprintf "[4. CAN PLACE SECOND LAST ]\n")
+                                    (SMPlay move)
+                            else 
+                                    (SMChange listOfIDs)
+
+
+                // 5. Send "Move" variable to the stream
+                //Print.printString (sprintf "[3.EXCISTING MOVES %A\n" st.moves)
+                Print.printString (sprintf "[3.Used tiles %A\n" st.moves.Length)
+                Print.printString (sprintf "[3.SENDING MOVES %A\n" move)
+                Print.printString (sprintf "[3. NR LETTERS USED] %A\n" move.Length)
+                send cstream (sendThisSM)
            
             let msg: Response = recv cstream
             handleClientMessage(msg, st, aux)
